@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>星空背景</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  html,body{ margin:0; padding:0; background:#000; overflow:hidden; }
+  #starfield-bg{ position:fixed; top:0; left:0; width:100%; height:100%; z-index:0; background:#000; }
+</style>
+</head>
+<body>
+<div id="starfield-bg"></div>
+<script>
+// ==================== 真实星空模块 (基于 THREE.js) ====================
+// 与 TRJ 首页欢迎页星空完全同源代码：同一星表 /data/stars.json、同一渲染参数、
+// 同一 4Hz 节流与移动端降配。本页无任何 UI，专供 iframe 嵌入作背景
+// （OC 小工具页 #starbg）。欢迎页那边用的是内联同款场景，两边观感一致。
+(function() {
+    if (typeof THREE === 'undefined') {
+        console.warn('THREE not available, starfield disabled');
+        return;
+    }
+
+    const longitude = 121.47;   // 上海经度
+    const latitude = 31.23;      // 上海纬度
+    const deg2rad = Math.PI / 180;
+    const rad2deg = 180 / Math.PI;
+
+    function getJulianDate(date) { return date / 86400000 + 2440587.5; }
+    function getGMST(date) {
+        const jd = getJulianDate(date);
+        const T = (jd - 2451545.0) / 36525.0;
+        let gmst = 280.46061837 + 360.98564736629 * (jd - 2451545.0) + 0.000387933 * T * T - T * T * T / 38710000.0;
+        gmst = gmst % 360; if (gmst < 0) gmst += 360; return gmst;
+    }
+    function raDecToAltAz(ra, dec, date, lon, lat) {
+        const lst = (getGMST(date) + lon) % 360;
+        const ha = (lst - ra) % 360;
+        const haRad = ha * deg2rad, decRad = dec * deg2rad, latRad = lat * deg2rad;
+        const sinAlt = Math.sin(latRad) * Math.sin(decRad) + Math.cos(latRad) * Math.cos(decRad) * Math.cos(haRad);
+        const alt = Math.asin(Math.max(-1, Math.min(1, sinAlt)));
+        const cosAz = (Math.sin(decRad) - Math.sin(latRad) * sinAlt) / (Math.cos(latRad) * Math.cos(alt));
+        let az = Math.acos(Math.max(-1, Math.min(1, cosAz)));
+        if (Math.sin(haRad) > 0) az = 2 * Math.PI - az;
+        return { alt: alt * rad2deg, az: az * rad2deg };
+    }
+
+    function createStarfieldScene(containerId, starData) {
+        const container = document.getElementById(containerId);
+        if (!container) {
+            console.warn(`Container #${containerId} not found`);
+            return null;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.style.display = 'block';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        container.appendChild(canvas);
+
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        canvas.width = width;
+        canvas.height = height;
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        camera.position.set(0, 0, 0);
+
+        const starGroup = new THREE.Group();
+        const positions = [];
+        const colors = [];
+
+        const processedStars = starData.map(star => ({
+            ra: (star[0] * 15) * deg2rad,
+            dec: star[1] * deg2rad,
+            mag: star[2],
+            bv: star[3] || 0.5
+        }));
+
+        for (let i = 0; i < processedStars.length; i++) {
+            positions.push(0, 0, 0);
+            colors.push(1, 1, 1);
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 1.0,
+            vertexColors: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            sizeAttenuation: true,
+            transparent: true
+        });
+
+        const points = new THREE.Points(geometry, material);
+        starGroup.add(points);
+        scene.add(starGroup);
+
+        // 手机 GPU 扛不住全屏 antialias + 高 DPR 像素量，降配
+        const smallScreen = window.innerWidth <= 768;
+        const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: !smallScreen });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, smallScreen ? 1.5 : 2));
+        renderer.setClearColor(0x050510, 1.0);
+
+        let rafId = null, running = false, io = null;
+        let lastSkyUpdate = 0;
+        const SKY_INTERVAL = 250; // ms：天文位置 4Hz 足够，肉眼不可辨
+        function animate() {
+            rafId = requestAnimationFrame(animate);
+
+            const now = new Date();
+            // 天空 16ms 只转约 0.0004°——每帧对每颗星重算 GMST+三角函数再全量重传
+            // GPU 缓冲太奢侈。节流到 4Hz：没到间隔就什么都不做（画布保留上一帧）。
+            if (now.getTime() - lastSkyUpdate < SKY_INTERVAL) return;
+            lastSkyUpdate = now.getTime();
+
+            const positionsArray = geometry.attributes.position.array;
+            const colorsArray = geometry.attributes.color.array;
+
+            for (let i = 0; i < processedStars.length; i++) {
+                const star = processedStars[i];
+                const coord = raDecToAltAz(star.ra * rad2deg, star.dec * rad2deg, now, longitude, latitude);
+                const altRad = coord.alt * deg2rad;
+                const azRad = coord.az * deg2rad;
+
+                const r = 500;
+                const x = r * Math.cos(altRad) * Math.sin(azRad);
+                const y = r * Math.sin(altRad);
+                const z = r * Math.cos(altRad) * Math.cos(azRad);
+
+                positionsArray[i*3] = x;
+                positionsArray[i*3+1] = y;
+                positionsArray[i*3+2] = z;
+
+                const brightness = Math.pow(2.5, -star.mag) * 200;
+                let rCol, gCol, bCol;
+                if (star.bv < 0) {
+                    rCol = 0.6; gCol = 0.8; bCol = 1.0;
+                } else if (star.bv < 0.6) {
+                    rCol = 1.0; gCol = 1.0; bCol = 1.0;
+                } else if (star.bv < 1.2) {
+                    rCol = 1.0; gCol = 0.9; bCol = 0.7;
+                } else {
+                    rCol = 1.0; gCol = 0.6; bCol = 0.4;
+                }
+                colorsArray[i*3] = rCol * brightness;
+                colorsArray[i*3+1] = gCol * brightness;
+                colorsArray[i*3+2] = bCol * brightness;
+            }
+
+            geometry.attributes.position.needsUpdate = true;
+            geometry.attributes.color.needsUpdate = true;
+
+            renderer.render(scene, camera);
+        }
+        function startLoop() { if (running) return; running = true; lastSkyUpdate = 0; animate(); }
+        function stopLoop() { running = false; if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
+        // iframe 背景常驻可见，IO 只是兜底：不可见时停 rAF，可见再跑
+        if ('IntersectionObserver' in window) {
+            io = new IntersectionObserver((entries) => {
+                if (entries.some((e) => e.isIntersecting)) startLoop();
+                else stopLoop();
+            }, { threshold: 0.01 });
+            io.observe(container);
+        } else {
+            startLoop();
+        }
+
+        const resizeHandler = () => {
+            const newWidth = container.clientWidth;
+            const newHeight = container.clientHeight;
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+            camera.aspect = newWidth / newHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(newWidth, newHeight);
+        };
+        window.addEventListener('resize', resizeHandler);
+
+        return () => {
+            window.removeEventListener('resize', resizeHandler);
+            stopLoop();
+            if (io) io.disconnect();
+            renderer.dispose();
+        };
+    }
+
+    async function loadStarCatalog() {
+        try {
+            const response = await fetch('/data/stars.json');
+            if (!response.ok) throw new Error('Failed to load star catalog');
+            const starData = await response.json();
+            console.log(`Loaded ${starData.length} stars from catalog`);
+
+            const cleanup = createStarfieldScene('starfield-bg', starData);
+            if (cleanup) window.addEventListener('pagehide', cleanup, { once: true });
+        } catch (error) {
+            console.error('Error loading star catalog:', error);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadStarCatalog);
+    } else {
+        loadStarCatalog();
+    }
+})();
+</script>
+</body>
+</html>

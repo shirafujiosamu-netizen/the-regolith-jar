@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>月壤箱 · THE REGOLITH JAR</title>
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
+<link rel="stylesheet" href="/works/detail.css">
+</head>
+<body>
+<nav class="top"><div class="wrap"><span class="brand">THE REGOLITH JAR</span><a class="back" href="/">回到首页</a></div></nav>
+<main><div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">作品 / 04</div>
+    <h1>月壤箱</h1>
+    <div class="cap">卡牌叙事游戏 / Unity 2022.3</div>
+  </section>
+
+  <section class="block">
+    <div class="eyebrow">关于</div>
+    <h2>走剧情、过检定、找线索、打遭遇战。主线像跑团，但不是在操作上像，是结构上像。</h2>
+    <p>道具、物资、武器、人物、技能全是卡，靠卡面的类别和标签区分。背包、任务栏、人物栏都排成手牌，能拖到角色位、接单区和丢弃区。技能树加点后，纯数值的成长改数字，其余成长直接发一张卡。</p>
+    <p>画面是纯黑底、1px 细线、米白字，琥珀只标当前选中。开始界面是一幅线稿星图，不放大字游戏名。</p>
+    <ul class="facts">
+      <li><b>主线</b>：剧情节点 → 技能检定 → 线索 → 遭遇战 → 后续节点；失败也走分支</li>
+      <li><b>卡组</b>：八组预装卡组，每组至多 22 张不重复卡；载具、同伴连携按流程加入</li>
+      <li><b>判定</b>：4/6/8/10/12/20 面骰，默认 4 面，>=5 命中 / 暴击</li>
+      <li><b>资源</b>：体力、魔法、san、移动值；占用不产生花费，消耗产生花费</li>
+      <li><b>实现</b>：Unity 2022.3.62f3，规则层与 UI 分离，全部卡面走同一个 DrawCard</li>
+      <li><b>状态</b>：开发中</li>
+    </ul>
+
+    <figure class="shot"><img src="/images/portfolio/game-start.png" alt="开始界面：纯黑线稿星图，无游戏名"><figcaption>开始界面：纯黑线稿星图，无游戏名</figcaption></figure>
+  </section>
+
+  <div class="pager">
+    <a href="/works/catway.html">← 猫径 CatWay</a>
+    <a href="/oc/">OC 小工具 →</a>
+  </div>
+
+</div></main>
+</body>
+</html>

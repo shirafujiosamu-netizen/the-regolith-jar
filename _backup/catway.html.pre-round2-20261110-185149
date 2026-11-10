@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>猫径 CatWay · THE REGOLITH JAR</title>
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
+<link rel="stylesheet" href="/works/detail.css">
+</head>
+<body>
+<nav class="top"><div class="wrap"><span class="brand">THE REGOLITH JAR</span><a class="back" href="/">回到首页</a></div></nav>
+<main><div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">作品 / 03</div>
+    <h1>猫径 CatWay</h1>
+    <div class="cap">地图应用 / Flutter + Node + MongoDB</div>
+  </section>
+
+  <section class="block">
+    <div class="eyebrow">关于</div>
+    <h2>把走过的店、展、演出钉在地图上。配图和攻略存在同一个点，不用在相册和备忘录之间来回翻。</h2>
+    <p>一条记录就是一个地图点：位置、照片、当时写的攻略、去了几次，都挂在点上。地图是入口，不是附加页。</p>
+    <p>客户端、服务端、数据库和部署都是自己搭的，后端跑在阿里云上。</p>
+    <ul class="facts">
+      <li><b>地图</b>：按点归档店 / 展 / 演出，配图与攻略同点存放</li>
+      <li><b>内容</b>：打卡、获赞、举报、定位与列表流</li>
+      <li><b>技术</b>：Flutter 客户端 + Node + MongoDB</li>
+      <li><b>部署</b>：阿里云轻量服务器，nginx 反代，管理端独立脚本</li>
+      <li><b>状态</b>：v1.0.3，客户端已到可发布状态，未上线</li>
+    </ul>
+
+  </section>
+
+  <div class="pager">
+    <a href="/works/xiang.html">← 巷</a>
+    <a href="/works/game.html">月壤箱 →</a>
+  </div>
+
+</div></main>
+</body>
+</html>

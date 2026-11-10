@@ -1,0 +1,1714 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OC 小工具 · THE REGOLITH JAR</title>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<style>
+  :root{
+    --bg:#07070d; --glass:rgba(20,20,30,.55); --glass-2:rgba(28,28,42,.5);
+    --line:rgba(255,255,255,.10); --text:#e9e9f2; --text-2:#9aa0b4;
+    --accent:#c04a36; --accent-soft:rgba(192,74,54,.15); --ok:#5bc97a; --warn:#e0af68;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+  body{ min-height:100vh; }
+  #starbg{ position:fixed; inset:0; z-index:0; width:100%; height:100%; border:0; pointer-events:none; background:#000; }
+  #glow{ position:fixed; z-index:1; width:520px; height:520px; margin:-260px 0 0 -260px;
+    border-radius:50%; pointer-events:none; opacity:0; transition:opacity .4s;
+    background:radial-gradient(circle, rgba(192,74,54,.17) 0%, rgba(120,90,255,.10) 35%, rgba(0,0,0,0) 68%); }
+  .wrap{ position:relative; z-index:2; max-width:1120px; margin:0 auto; padding:22px 18px 90px; }
+
+  .loginbar{ display:none; align-items:center; gap:12px; margin-bottom:16px; padding:11px 16px;
+    background:linear-gradient(90deg, rgba(192,74,54,.17), rgba(28,28,42,.5));
+    border:1px solid rgba(192,74,54,.42); border-radius:14px; backdrop-filter:blur(14px); font-size:13.5px; }
+  .loginbar.show{ display:flex; }
+  .loginbar b{ color:var(--accent); }
+  .loginbar a{ margin-left:auto; color:#fff; background:var(--accent); text-decoration:none;
+    padding:6px 14px; border-radius:999px; font-size:12.5px; white-space:nowrap; }
+
+  .top{ display:flex; align-items:baseline; gap:16px; flex-wrap:wrap; margin-bottom:6px; }
+  .top h1{ font-size:25px; margin:0; letter-spacing:.02em; }
+  .top .sub{ font-size:12.5px; color:var(--text-2); }
+  .top .who{ margin-left:auto; font-size:12.5px; color:var(--text-2); }
+  .top .who b{ color:var(--text); }
+  .packbtn{ background:var(--accent); color:#1a0d08; border:0; font-weight:600;
+    padding:7px 14px; border-radius:999px; cursor:pointer; font-size:12.5px; }
+  nav.jump{ position:sticky; top:0; z-index:20; display:flex; gap:6px; flex-wrap:wrap;
+    padding:10px 0; margin:8px 0 22px; background:transparent; }
+  nav.jump a{ color:var(--text-2); text-decoration:none; font-size:13px; padding:6px 13px;
+    border:1px solid var(--line); border-radius:999px; background:var(--glass); transition:.18s; }
+  nav.jump a:hover{ color:#fff; border-color:rgba(192,74,54,.55); background:var(--accent-soft); }
+
+  section.sec{ background:var(--glass); border:1px solid var(--line); border-radius:18px;
+    padding:20px; margin-bottom:22px; backdrop-filter:blur(20px) saturate(1.1);
+    box-shadow:0 18px 50px rgba(0,0,0,.35); scroll-margin-top:64px; }
+  section.sec h2{ font-size:17px; margin:0 0 4px; letter-spacing:.03em; }
+  section.sec .hint{ font-size:12.5px; color:var(--text-2); margin:0 0 16px; }
+
+  .btn{ background:var(--accent); color:#1a0d08; border:0; font-weight:600; padding:8px 15px;
+    border-radius:10px; cursor:pointer; font-size:13px; }
+  .btn.ghost{ background:transparent; color:var(--text); border:1px solid var(--line); }
+  .btn.sm{ padding:5px 11px; font-size:12px; border-radius:8px; }
+  .toolbar{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+  .ccard{ position:relative; background:var(--glass-2); border:1px solid var(--line); border-radius:14px;
+    padding:12px; cursor:grab; transition:.16s; overflow:hidden; }
+  .ccard:hover{ border-color:rgba(192,74,54,.5); transform:translateY(-2px); }
+  .ccard.sel{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+  .ccard .bar{ position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--accent); }
+  .ccard .nm{ font-weight:600; font-size:14.5px; margin-bottom:2px; }
+  .ccard .ar{ font-size:11.5px; color:var(--text-2); }
+  .ccard .del{ position:absolute; top:6px; right:6px; opacity:0; background:rgba(0,0,0,.4);
+    border:0; color:#f7768e; cursor:pointer; border-radius:6px; font-size:12px; padding:2px 6px; }
+  .ccard:hover .del{ opacity:1; }
+
+  .editor{ margin-top:18px; border-top:1px solid var(--line); padding-top:18px; }
+  .empty{ color:var(--text-2); font-size:13px; padding:18px; text-align:center;
+    border:1px dashed var(--line); border-radius:12px; }
+  .cols{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media(max-width:760px){ .cols{ grid-template-columns:1fr; } }
+  .fld{ margin-bottom:12px; }
+  .fld label{ display:block; font-size:12px; color:var(--text-2); margin-bottom:4px; }
+  .fld input,.fld textarea,.fld select{ width:100%; background:rgba(0,0,0,.35); color:var(--text);
+    border:1px solid var(--line); border-radius:9px; padding:8px 10px; font-size:13px; font-family:inherit; }
+  .fld textarea{ resize:vertical; min-height:60px; }
+
+  .six{ display:grid; grid-template-columns:200px 1fr; gap:16px; align-items:start; }
+  @media(max-width:520px){ .six{ grid-template-columns:1fr; } }
+  .six canvas{ width:200px; height:200px; background:rgba(0,0,0,.25); border-radius:12px; }
+  .slider{ display:flex; align-items:center; gap:10px; margin-bottom:7px; font-size:12.5px; }
+  .slider span{ width:44px; color:var(--text-2); }
+  .slider input{ flex:1; accent-color:var(--accent); }
+  .slider b{ width:26px; text-align:right; color:var(--accent); }
+
+  .swatches{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .sw{ width:34px; height:34px; border-radius:9px; border:2px solid transparent; cursor:pointer; }
+  .sw.on{ border-color:#fff; box-shadow:0 0 0 2px var(--accent); }
+  .swatch-add{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .swatch-add input[type=color]{ width:40px; height:34px; border:0; background:transparent; cursor:pointer; }
+  .kept{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; align-items:center; }
+  .kept i{ width:22px; height:22px; border-radius:6px; display:block; }
+
+  .rel{ display:flex; gap:8px; margin-bottom:8px; align-items:center; }
+  .rel select,.rel input{ background:rgba(0,0,0,.35); color:var(--text); border:1px solid var(--line);
+    border-radius:8px; padding:6px 8px; font-size:12.5px; }
+  .rel .t{ flex:1; } .rel .l{ width:120px; }
+  .rel button{ background:transparent; border:0; color:#f7768e; cursor:pointer; font-size:14px; }
+
+  .graphbox{ background:rgba(0,0,0,.22); border-radius:14px; overflow:hidden; }
+  .graphbox svg{ width:100%; height:auto; display:block; }
+  /* ===== 世界地图 (2026-10-21) ===== */
+  .mapstage{ position:relative; background:rgba(0,0,0,.22); border-radius:14px; min-height:320px; overflow:hidden; }
+  .mapempty{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--text-2); font-size:13px; text-align:center; padding:24px; }
+  .mapwrap{ position:relative; line-height:0; }
+  .mapwrap img{ width:100%; height:auto; display:block; user-select:none; -webkit-user-drag:none; }
+  #mapPins{ position:absolute; inset:0; }
+  .pin{ position:absolute; width:24px; height:24px; margin:-12px 0 0 -12px; border-radius:50%;
+        background:var(--accent); border:2px solid rgba(255,255,255,.85); cursor:grab; touch-action:none;
+        box-shadow:0 2px 10px rgba(0,0,0,.5); }
+  .pin.linked{ background:var(--ok); }
+  .pin.dragging{ cursor:grabbing; transform:scale(1.15); }
+  .mapstage.pinning .mapwrap{ cursor:crosshair; }
+  .mapstage.pinning #mapPins{ pointer-events:none; }
+  .pincard{ position:absolute; right:12px; top:12px; width:210px; z-index:5;
+            background:var(--glass); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px);
+            border:1px solid var(--line); border-radius:12px; padding:12px;
+            display:flex; flex-direction:column; gap:8px; }
+  .pincard input,.pincard select{ background:rgba(0,0,0,.35); color:var(--text); border:1px solid var(--line);
+            border-radius:8px; padding:7px 9px; font-size:13px; width:100%; box-sizing:border-box; }
+  @media (max-width:768px){ .pincard{ right:8px; top:8px; width:170px; } }
+
+  .gedge-label{paint-order:stroke;stroke:#0b0b12;stroke-width:3px;stroke-linejoin:round;pointer-events:none}
+.gnode{ cursor:pointer; }
+  .gnode text{ fill:var(--text); font-size:12px; }
+  .gedge{ stroke:rgba(255,255,255,.22); }
+
+  .chk{ padding:10px 12px; border-radius:10px; margin-bottom:8px; font-size:13px;
+    border:1px solid var(--line); background:rgba(0,0,0,.2); }
+  .chk.bad{ border-color:rgba(247,118,142,.4); } .chk.good{ border-color:rgba(91,201,122,.35); }
+
+  .expgrid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start; }
+  @media(max-width:760px){ .expgrid{ grid-template-columns:1fr; } }
+  #ocCardCanvas{ width:100%; max-width:340px; height:auto; border-radius:14px; background:#000; }
+
+  .wcard{ background:var(--glass-2); border:1px solid var(--line); border-radius:12px; padding:11px 13px;
+    cursor:grab; margin-bottom:10px; }
+  .wcard.sel{ border-color:var(--accent); }
+  .wcard .nm{ font-weight:600; }
+  .toast{ position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:50;
+    background:rgba(20,20,30,.9); border:1px solid var(--line); color:#fff; padding:9px 18px;
+    border-radius:999px; font-size:13px; opacity:0; transition:.3s; pointer-events:none; backdrop-filter:blur(8px); }
+  .toast.show{ opacity:1; }
+  .back{ position:fixed; left:16px; top:14px; z-index:30; font-size:12.5px; color:var(--text-2);
+    text-decoration:none; } .back:hover{ color:#fff; }
+
+  /* ===== 移动端优化补丁 (2026-10-19) ===== */
+  /* 1) 触屏没有 hover：角色卡删除按钮常显（原 opacity:0 仅 hover 显示，手机上永远看不见） */
+  @media (hover: none), (max-width: 760px) {
+    .ccard .del { opacity: .7 !important; }
+    .ccard .del:active { opacity: 1; }
+  }
+  @media (max-width: 760px) {
+    /* 2) 玻璃面板 blur(20px) 在手机 GPU 上极贵（滚动时每帧重算），
+         背景本就是深色星空，换近不透明实底视觉几乎无损 */
+    section.sec { backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+      background: rgba(18,18,28,.92) !important; }
+    nav.jump { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+    .loginbar { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+    .toast { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+    /* 3) iOS Safari：聚焦 <16px 的输入框会自动放大整个页面 */
+    .fld input, .fld textarea, .fld select,
+    .rel select, .rel input, #ocExportSel, #aiText { font-size: 16px !important; }
+    /* 4) 关系行窄屏防挤压 */
+    .rel { flex-wrap: wrap; }
+    .rel .l { width: 100px !important; }
+    .rel .t { min-width: 0; }
+    /* 5) 导出预览居中 */
+    #ocCardCanvas { display: block; margin: 0 auto; }
+  }
+
+  /* ===== 导航修复 (2026-10-19 二修) =====
+     用户反馈：深色容器带还在、胶囊反被抹掉。容器改全透明（去掉深色渐变带），
+     链接恢复独立胶囊（1px 边 + 玻璃底），当前节 = 激活胶囊 */
+  nav.jump{ background:transparent !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+  nav.jump a{ border:1px solid var(--line) !important; background:var(--glass) !important; }
+  nav.jump a:hover{ color:#fff !important; border-color:rgba(192,74,54,.55) !important; background:var(--accent-soft) !important; }
+  nav.jump a.on{ color:var(--accent) !important; border-color:rgba(192,74,54,.55) !important; background:var(--accent-soft) !important; }
+  @media (max-width: 760px){ nav.jump a{ padding:8px 14px; } }
+  /* ===== 登录门 + 云端账号栏 (2026-10-19) ===== */
+  #authGate{ position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center;
+    background:rgba(5,5,10,.92); padding:20px; }
+  #authGate.hide{ display:none; }
+  .ag-card{ width:100%; max-width:360px; background:var(--glass); border:1px solid var(--line);
+    border-radius:18px; padding:26px 24px; display:flex; flex-direction:column; gap:12px; }
+  .ag-card h2{ margin:0; font-size:20px; letter-spacing:.03em; }
+  .ag-card .ag-sub{ margin:0; font-size:12.5px; color:var(--text-2); }
+  .ag-card input{ background:rgba(0,0,0,.35); color:var(--text); border:1px solid var(--line);
+    border-radius:10px; padding:11px 13px; font-size:16px; font-family:inherit; }
+  .ag-card .btn{ padding:11px; font-size:14px; margin-top:4px; }
+  .ag-card .btn:disabled{ opacity:.6; cursor:default; }
+  .ag-err{ color:#f7768e; font-size:12.5px; min-height:15px; }
+  .ag-tip{ margin:0; font-size:12px; color:var(--text-2); text-align:center; }
+  .dot{ width:8px; height:8px; border-radius:50%; background:var(--ok); display:inline-block; flex:none; }
+  .dot.syncing{ background:var(--warn); } .dot.err{ background:#f7768e; cursor:pointer; }
+
+.ccard .av{ width:34px; height:34px; border-radius:10px; overflow:hidden; float:left; margin:0 10px 2px 0; background:rgba(255,255,255,.08); }
+.ccard .av img{ width:100%; height:100%; object-fit:cover; display:block; }
+.oc-imgs{ display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+.oc-img{ position:relative; width:64px; height:64px; border-radius:10px; overflow:hidden; border:2px solid transparent; cursor:pointer; background:rgba(255,255,255,.06); }
+.oc-img img{ width:100%; height:100%; object-fit:cover; display:block; }
+.oc-img.av{ border-color:var(--accent); }
+.oc-img > button{ position:absolute; top:2px; right:2px; width:16px; height:16px; border-radius:50%; background:rgba(0,0,0,.62); color:#fff; border:0; font-size:10px; line-height:1; cursor:pointer; }
+.oc-img.add{ display:flex; align-items:center; justify-content:center; font-size:22px; color:var(--text-2); border:1px dashed var(--line); }
+
+  /* 关系连线编辑面板 */
+  .rel-editor { display: none; margin: 10px 0 0; padding: 12px 14px; border-radius: 12px;
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); }
+  .rel-editor-head { font-size: 13px; color: var(--text-2); margin-bottom: 8px; }
+  .rel-editor-row { display: flex; gap: 8px; align-items: center; }
+  .rel-editor-row input { flex: 1 1 auto; min-width: 0; height: 32px; padding: 0 10px;
+    border-radius: 8px; border: 1px solid rgba(255,255,255,.16);
+    background: rgba(255,255,255,.06); color: var(--text); font: inherit; }
+  .rel-editor-row button { height: 32px; padding: 0 14px; border-radius: 8px; border: none;
+    cursor: pointer; background: rgba(255,255,255,.10); color: var(--text); font: inherit; }
+  .rel-editor-row button.danger { color: #FF7A82; }
+
+  /* 印象曲 */
+  .oc-songs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .oc-song { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px;
+    border-radius: 8px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); }
+  .oc-song-name { font-size: 12px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .oc-song-play, .oc-song-del { width: 20px; height: 20px; border-radius: 50%; border: none; cursor: pointer;
+    background: rgba(255,255,255,.10); color: var(--text); font-size: 10px; line-height: 1; padding: 0; }
+  .oc-song-play.playing { background: var(--accent); }
+  .oc-song-del { color: #FF7A82; }
+  .oc-song.add { width: 32px; justify-content: center; cursor: pointer; font-size: 14px; color: var(--text-2); }
+</style>
+</head>
+<body>
+<iframe id="starbg" src="/starfield-bg.html" tabindex="-1" aria-hidden="true"></iframe>
+<div id="glow"></div>
+<a class="back" href="/" target="_blank">← 返回 THE REGOLITH JAR</a>
+
+<div id="authGate">
+  <form class="ag-card" id="agForm" autocomplete="off">
+    <h2>OC 小工具</h2>
+    <p class="ag-sub">登录后跨设备同步你的 OC；不登录数据只在本机</p>
+    <div class="ag-err" id="agErr"></div>
+    <input id="agUser" placeholder="用户名" autocomplete="username" maxlength="24">
+    <input id="agPass" type="password" placeholder="密码" autocomplete="current-password">
+    <input id="agPass2" type="password" placeholder="再输一次密码" style="display:none">
+    <button class="btn" id="agGo" type="submit">登录</button>
+    <button type="button" class="btn ghost sm" id="agSkip">先看看，不用登录</button>
+    <p class="ag-tip" id="agTip"></p>
+  </form>
+</div>
+
+<div class="wrap">
+  <div class="loginbar" id="loginbar">
+    <span class="dot" id="syncDot" title="同步状态"></span>
+    <span>已登录 <b id="whoAcc">—</b> · 数据存云端，仅自己可见</span>
+    <button class="btn ghost sm" id="logoutBtn" style="margin-left:auto">登出</button>
+  </div>
+
+  <div class="top">
+    <h1>OC 小工具</h1>
+    <span class="sub">角色 · 关系 · 世界 · 地图 · 自检 · 出图</span>
+    <span class="who">身份：<b id="whoName">—</b></span>
+      <button class="btn ghost sm" id="cloudBtn" title="登录后可跨设备同步，不登录也能用">☁ 云同步</button>
+  </div>
+
+  <nav class="jump" id="jump">
+    <a data-t="sec-archive">角色</a>
+    <a data-t="sec-graph">关系网</a>
+    <a data-t="sec-world">世界</a>
+    <a data-t="sec-faction">势力</a>
+    <a data-t="sec-map">地图</a>
+    <a data-t="sec-check">自检</a>
+    <a data-t="sec-export">导出</a>
+  </nav>
+
+  <section class="sec" id="sec-archive">
+    <h2>角色档案</h2>
+    <p class="hint">拖动卡片可排序。点卡片编辑。六维、代表色留空可由你慢慢填。</p>
+    <div class="toolbar">
+      <button class="btn" id="ocNewBtn">+ 新建角色</button>
+      <button class="btn ghost sm" id="sortHint">↕ 拖动排序</button>
+      <button class="btn ghost sm" id="aiBtn">AI 识别导入</button>
+    </div>
+    <div id="aiPanel" style="display:none;margin-bottom:16px;">
+      <div style="border:1px solid var(--line);border-radius:14px;padding:14px;background:rgba(0,0,0,.22);">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+          <b style="font-size:14px;">AI 识别导入</b>
+          <span style="font-size:12px;color:var(--text-2);">粘贴文字或上传图片，整理成角色卡</span>
+          <button class="btn ghost sm" id="aiCfgBtn" style="margin-left:auto">API 设置</button>
+        </div>
+        <textarea id="aiText" rows="5" placeholder="把角色设定文本粘贴到这里，例如：&#10;姓名：XXX&#10;派系：全能之门&#10;年龄：25&#10;背景：……" style="width:100%;background:rgba(0,0,0,.35);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px;font-size:13px;font-family:inherit;resize:vertical;"></textarea>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;">
+          <label class="btn ghost sm" style="cursor:pointer;">上传图片<input id="aiImgs" type="file" accept="image/*" multiple style="display:none;"></label>
+          <span id="aiImgNames" style="font-size:12px;color:var(--text-2);"></span>
+          <button class="btn" id="aiParseBtn" style="margin-left:auto;">识别</button>
+        </div>
+        <div id="aiCfg" style="display:none;margin-top:12px;border-top:1px solid var(--line);padding-top:12px;">
+          <div class="cols">
+            <div class="fld"><label>API 地址（OpenAI 兼容）</label><input id="aiBase" placeholder="https://api.deepseek.com/v1"></div>
+            <div class="fld"><label>模型</label><input id="aiModel" placeholder="deepseek-chat / gpt-4o-mini"></div>
+          </div>
+          <div class="fld"><label>API Key（只存在你自己浏览器，不上传）</label><input id="aiKey" type="password" placeholder="sk-..."></div>
+          <div style="font-size:12px;color:var(--text-2);">没配 key 也能用：本地规则解析粘贴的文本（识别「姓名：」「派系：」等字段）。配了 key 才能识别图片和复杂文本。</div>
+        </div>
+        <div id="aiPreview" style="margin-top:12px;"></div>
+      </div>
+    </div>
+    <div class="grid" id="ocList"></div>
+    <div class="editor" id="ocEditor"></div>
+  </section>
+
+  <section class="sec" id="sec-graph">
+    <h2>关系网</h2>
+    <p class="hint">点节点高亮其关系。关系在角色编辑里维护。</p>
+    <div class="graphbox" id="ocGraph"></div>
+  </section>
+
+  <section class="sec" id="sec-world">
+    <h2>世界 · 编年史</h2>
+    <p class="hint">世界卡片可拖动排序。编年史自由书写。</p>
+    <div class="toolbar"><button class="btn" id="ocWorldNew">+ 新建世界</button></div>
+    <div class="cols">
+      <div id="ocWorldList"></div>
+      <div id="ocWorldEditor"></div>
+    </div>
+  </section>
+
+
+  <section class="sec" id="sec-faction">
+    <h2>势力 · 归属</h2>
+    <p class="hint">每个势力是一个开局。角色可在编辑面板里选势力；势力的成员清单在这里维护。</p>
+    <div class="toolbar"><button class="btn" id="factionNew">+ 新建势力</button></div>
+    <div class="cols">
+      <div id="factionList"></div>
+      <div id="factionEditor"></div>
+    </div>
+  </section>
+
+  <section class="sec" id="sec-map">
+    <h2>世界地图</h2>
+    <p class="hint">每个世界一张地图：上传图 → 点「放标记」在图上点一下 → 标记可拖动、可关联角色（绿点=已关联）。点标记编辑。</p>
+    <div class="toolbar">
+      <select id="mapWorldSel" style="background:rgba(0,0,0,.35);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:13px;"></select>
+      <button class="btn" id="mapUploadBtn">上传地图</button>
+      <input type="file" id="mapFile" accept="image/*" hidden>
+      <button class="btn ghost" id="mapPinBtn">📍 放标记</button>
+      <button class="btn ghost" id="mapDelBtn" style="color:#f7768e">删除此图</button>
+    </div>
+    <div class="mapstage" id="mapStage">
+      <div class="mapempty" id="mapEmpty">先在「世界」里建一个世界，再回来上传地图。</div>
+      <div class="mapwrap" id="mapWrap" hidden>
+        <img id="mapImg" alt="世界地图">
+        <div id="mapPins"></div>
+      </div>
+      <div class="pincard" id="pinCard" hidden>
+        <input id="pinName" placeholder="标记名称" maxlength="60">
+        <select id="pinOc"></select>
+        <div class="toolbar" style="margin:0">
+          <button class="btn sm" id="pinSave">保存</button>
+          <button class="btn ghost sm" id="pinDel" style="color:#f7768e">删</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="sec-check">
+    <h2>设定一致性自检</h2>
+    <p class="hint">扫描重名、缺字段、六维未填、悬空关系。</p>
+    <div id="ocCheck"></div>
+  </section>
+
+  <section class="sec" id="sec-export">
+    <h2>导出与下载</h2>
+    <p class="hint">1080×1080 卡片 PNG、3×3 九宫格；或把全部数据打包成 JSON / TXT 下载到本地。</p>
+    <div class="toolbar">
+      <select id="ocExportSel" style="background:rgba(0,0,0,.35);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:13px;"></select>
+      <button class="btn" id="ocPngBtn">导出 PNG</button>
+      <button class="btn ghost" id="ocGridBtn">九宫格</button>
+    </div>
+    <div class="toolbar" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px;">
+      <button class="btn ghost" id="dlJsonBtn">下载全部数据 (JSON)</button>
+      <button class="btn ghost" id="dlTxtBtn">下载设定集 (TXT)</button>
+      <span style="font-size:12px;color:var(--text-2);">把本页全部角色 / 世界 / 关系打包下载到本地，不依赖账号</span>
+    </div>
+    <canvas id="ocCardCanvas" width="1080" height="1080"></canvas>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+const TOKEN_KEY = 'wb_oc_token';
+function token(){ return localStorage.getItem(TOKEN_KEY) || ''; }
+let USER = '';
+function PREFIX(){ return 'wb_oc_' + USER + '_'; }
+const KEY = k => PREFIX() + k;
+function getData(k){ try { return JSON.parse(localStorage.getItem(KEY(k)) || 'null'); } catch(e){ return null; } }
+/* 本地编辑 -> 防抖 1.2s -> 推云端 */
+let syncTimer = null;
+function setSync(s){
+  const d = document.getElementById('syncDot'); if (!d) return;
+  d.className = 'dot' + (s === 'ok' ? '' : ' ' + s);
+  d.title = s === 'ok' ? '已同步到云端' : (s === 'syncing' ? '同步中…' : '同步失败，点我重试');
+}
+function save(k,v){
+  localStorage.setItem(KEY(k), JSON.stringify(v));
+  if (!USER || !token()) return;
+  setSync('syncing');
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(pushData, 1200);
+}
+async function pushData(){
+  if (!USER || !token()) return;
+  try {
+    const r = await fetch('/api/oc/data', { method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token() },
+      body: JSON.stringify({ worlds: worlds, ocs: ocs, order: order, worldOrder: worldOrder, maps: maps, factions: factions }) });
+    if (r.status === 401){ showGate('登录已过期，请重新登录'); return; }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    setSync('ok');
+  } catch(e){ setSync('err'); }
+}
+function t(){ return 'id' + Math.random().toString(36).slice(2,9); }
+function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+const SIX_KEYS = ['好奇心','体力','幸运','战力','智力','魅力'];
+const OC_PALETTE = ['#c04a36','#7aa2f7','#9ece6a','#bb9af7','#e0af68','#f7768e','#7dcfff','#9d7cd8'];
+
+/* 本页不内置、不拉取任何预设角色数据：内容全部来自用户本人填写（游客存本机，登录后存本人账号） */
+
+let worlds = getData('worlds'); if (!Array.isArray(worlds)) worlds = [];
+let ocs = getData('ocs'); if (!Array.isArray(ocs)) ocs = [];
+let order = getData('order'); if (!Array.isArray(order)) order = [];
+let worldOrder = getData('worldOrder'); if (!Array.isArray(worldOrder)) worldOrder = [];
+let curOcId = null, curWorldId = null, graphFocus = null;
+let maps = getData('maps'); if (!Array.isArray(maps)) maps = [];
+let factions = getData('factions'); if (!Array.isArray(factions)) factions = [];
+let curFactionId = null;
+const el = id => document.getElementById(id);
+const ocById = id => ocs.find(o => o.id === id);
+const worldById = id => worlds.find(w => w.id === id);
+
+function toast(msg){ const t = el('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('show'), 1800); }
+function refreshWho(){ el('whoName').textContent = USER || '游客'; el('loginbar').classList.toggle('show', !!USER); el('cloudBtn').style.display = USER ? 'none' : ''; if (USER) el('whoAcc').textContent = USER; }
+function reloadData(){
+  worlds = getData('worlds') || []; ocs = getData('ocs') || [];
+  order = getData('order') || []; worldOrder = getData('worldOrder') || [];
+  maps = getData('maps') || [];
+  factions = getData('factions') || [];
+  curOcId = null; curWorldId = null; curFactionId = null; refreshWho(); renderAll();
+}
+
+function orderedOcs(){
+  const head = order.map(ocById).filter(Boolean);
+  const tail = ocs.filter(o => order.indexOf(o.id) === -1);
+  return head.concat(tail);
+}
+function renderOcList(){
+  const box = el('ocList'); const list = orderedOcs();
+  if (!list.length){ box.innerHTML = '<div class="empty" style="grid-column:1/-1">还没有角色。点「+ 新建角色」开始，或用「AI 识别导入」批量添加。</div>'; return; }
+  box.innerHTML = list.map(o => {
+    const w = worldById(o.worldId);
+    return '<div class="ccard' + (o.id===curOcId?' sel':'') + '" data-id="' + o.id + '">'
+      + '<span class="bar" style="background:' + (o.color||'var(--accent)') + '"></span>'
+      + '<button class="del" data-del="' + o.id + '">✕</button>'
+      + (o.avatar ? '<div class="av"><img src="' + o.avatar + '" alt=""></div>' : '')
+      + '<div class="nm">' + escapeHtml(o.name) + '</div>'
+      + '<div class="ar">' + escapeHtml(o.archetype||'') + (w?(' · '+escapeHtml(w.name.split('（')[0])):'') + (ocFaction(o)?(' · '+escapeHtml(ocFaction(o).name)):'') + '</div>'
+      + '</div>';
+  }).join('');
+  box.querySelectorAll('.ccard').forEach(c => c.addEventListener('click', e => {
+    if (e.target.dataset && e.target.dataset.del) return;
+    curOcId = c.dataset.id; renderOcList(); renderOcEditor(curOcId);
+  }));
+  box.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!confirm('删除角色「' + (ocById(b.dataset.del)||{}).name + '」？')) return;
+    ocs = ocs.filter(o => o.id !== b.dataset.del);
+    order = order.filter(id => id !== b.dataset.del);
+    if (curOcId === b.dataset.del) curOcId = null;
+    save('ocs', ocs); save('order', order);
+    renderOcList(); renderOcEditor(curOcId); renderOcGraph(); renderOcCheck(); renderOcExport();
+  }));
+  if (window.Sortable && !box._sortable){
+    box._sortable = new Sortable(box, { animation:160, delay:60, delayOnTouchOnly:true,
+      onEnd: () => { order = Array.from(box.children).map(c => c.dataset.id).filter(Boolean); save('order', order); toast('排序已保存'); }
+    });
+  }
+}
+
+function renderOcEditor(id){
+  const box = el('ocEditor'); const o = ocById(id);
+  if (!o){ box.innerHTML = '<div class="empty">选中一个角色进行编辑。</div>'; return; }
+  const six = o.six || (o.six = {});
+  const fsel = '<option value="">— 无 —</option>' + factions.map(f =>
+    '<option value="' + f.id + '"' + (o.factionId===f.id?' selected':'') + '>' + escapeHtml(f.name) + '</option>').join('');
+  const wsel = '<option value="">— 无 —</option>' + worlds.map(w =>
+    '<option value="' + w.id + '"' + (o.worldId===w.id?' selected':'') + '>' + escapeHtml(w.name.split('（')[0]) + '</option>').join('');
+  const sliders = SIX_KEYS.map(k =>
+    '<div class="slider"><span>' + k + '</span><input type="range" min="0" max="10" value="' + (six[k]||0) + '" data-six="' + k + '"><b>' + (six[k]||0) + '</b></div>').join('');
+  const rels = (o.relations||[]).map((r,i) =>
+    '<div class="rel"><select class="t" data-ri="' + i + '" data-rk="to">'
+    + '<option value="">— 选择对象 —</option>' + ocs.filter(x=>x.id!==o.id).map(x =>
+      '<option value="' + x.id + '"' + (r.to===x.id?' selected':'') + '>' + escapeHtml(x.name) + '</option>').join('')
+    + '</select><input class="l" placeholder="关系" value="' + escapeHtml(r.label||'') + '" data-ri="' + i + '" data-rk="label">'
+    + '<button data-rdel="' + i + '">✕</button></div>').join('');
+  box.innerHTML =
+    '<div class="toolbar"><b style="font-size:15px">编辑：' + escapeHtml(o.name) + '</b>'
+    + '<button class="btn ghost sm" id="addRelBtn">+ 关系</button></div>'
+    + '<div class="cols"><div>'
+    + '<div class="fld"><label>名字</label><input id="f_name" value="' + escapeHtml(o.name) + '"></div>'
+    + '<div class="fld"><label>原型 / 身份</label><input id="f_arch" value="' + escapeHtml(o.archetype||'') + '"></div>'
+    + '<div class="fld"><label>世界</label><select id="f_world">' + wsel + '</select></div>'
+    + '<div class="fld"><label>势力</label><select id="f_faction">' + fsel + '</select></div>'
+    + '<div class="fld"><label>年龄</label><input id="f_age" value="' + escapeHtml(o.age||'') + '"></div>'
+    + '<div class="fld"><label>出身</label><input id="f_origin" value="' + escapeHtml(o.origin||'') + '"></div>'
+    + '<div class="fld"><label>爱好</label><input id="f_hobby" value="' + escapeHtml(o.hobby||'') + '"></div>'
+    + '<div class="fld"><label>特质</label><input id="f_trait" value="' + escapeHtml(o.trait||'') + '"></div>'
+    + '<div class="fld"><label>一句话引子</label><input id="f_hook" value="' + escapeHtml(o.hook||'') + '"></div>'
+    + '</div><div>'
+    + '<div class="fld"><label>背景</label><textarea id="f_bg" rows="6">' + escapeHtml(o.background||'') + '</textarea></div>'
+    + '<div class="fld"><label>图片<span style="margin-left:8px;font-weight:400;font-size:11px;color:var(--text-2);">点缩略图设为头像</span></label>'
+    + '<div class="oc-imgs" id="ocImgs">'
+    + (o.images||[]).map((im,ix) =>
+        '<div class="oc-img' + (o.avatar===im.data?' av':'') + '" data-ix="' + ix + '" title="点击设为头像">'
+        + '<img src="' + im.data + '" alt="">'
+        + '<button data-imgdel="' + ix + '" title="删除">✕</button></div>').join('')
+    + '<label class="oc-img add" title="上传图片">＋<input type="file" id="ocImgInput" accept="image/*" multiple hidden></label>'
+    + '</div></div>'
+    + '<div class="fld"><label>印象曲<span style="margin-left:8px;font-weight:400;font-size:11px;color:var(--text-2);">mp3/m4a，单曲 3MB 以内</span></label>'
+    + '<div class="oc-songs" id="ocSongs">'
+    + (o.songs||[]).map((sg,ix) =>
+        '<div class="oc-song" data-ix="' + ix + '">'
+        + '<button class="oc-song-play" data-songplay="' + ix + '" title="试听">▶</button>'
+        + '<span class="oc-song-name" title="' + escapeHtml(sg.name||'') + '">' + escapeHtml(sg.name||'未命名') + '</span>'
+        + '<button class="oc-song-del" data-songdel="' + ix + '" title="删除">✕</button></div>').join('')
+    + '<label class="oc-song add" title="上传印象曲">＋<input type="file" id="ocSongInput" accept="audio/*" multiple hidden></label>'
+    + '</div></div>'
+    + '<div class="fld"><label>六维属性</label><div class="six"><canvas id="sixCanvas" width="200" height="200"></canvas><div>' + sliders + '</div></div></div>'
+    + '<div class="fld"><label>代表色</label><div class="swatch-add">'
+    +   '<input type="color" id="colorPick" value="' + (o.color||'#c04a36') + '">'
+    +   '<button class="btn ghost sm" id="extractBtn">从图片取色</button>'
+    +   '<input type="file" id="imgFile" accept="image/*" style="display:none">'
+    +   '<span style="font-size:12px;color:var(--text-2)">点色块可加入/移除代表色</span>'
+    + '</div><div class="swatches" id="swatches"></div>'
+    + '<div class="kept" id="kept"></div></div>'
+    + '<div class="fld"><label>关系</label><div id="relBox">' + rels + '</div></div>'
+    + '</div></div>';
+  drawRadar(el('sixCanvas').getContext('2d'), 100, 100, 78, six, o.color || '#c04a36');
+  renderSwatches(o);
+  [['f_name','name'],['f_arch','archetype'],['f_world','worldId'],['f_age','age'],
+   ['f_origin','origin'],['f_hobby','hobby'],['f_trait','trait'],['f_hook','hook'],['f_bg','background']]
+   .forEach(([idn,key]) => el(idn).addEventListener('input', () => {
+     o[key] = el(idn).value; save('ocs', ocs);
+     if (key==='name'||key==='worldId'||key==='archetype'){ renderOcList(); }
+   }));
+  el('f_world').addEventListener('change', () => { o.worldId = el('f_world').value; save('ocs',ocs); renderOcList(); });
+  el('f_faction').addEventListener('change', () => {
+    const v = el('f_faction').value;
+    if (v) o.factionId = v; else delete o.factionId;
+    save('ocs', ocs); renderOcList(); renderFactionList(); renderFactionEditor(curFactionId);
+  });
+  (function bindOcSongs(){
+    const box = el('ocSongs'); if (!box) return;
+    const fileInput = el('ocSongInput');
+    const MAX = 3 * 1024 * 1024;
+    if (fileInput) fileInput.addEventListener('change', async () => {
+      const files = Array.from(fileInput.files || []);
+      if (!files.length) return;
+      if (!Array.isArray(o.songs)) o.songs = [];
+      for (const f of files){
+        if (!/^audio\//.test(f.type)) { toast('不是音频文件'); continue; }
+        if (f.size > MAX) { toast((f.name||'') + ' 超过 3MB，先转码再传'); continue; }
+        if (o.songs.length >= 3) { toast('每个角色最多 3 首'); break; }
+        const data = await new Promise(r => {
+          const rd = new FileReader();
+          rd.onload = () => r(rd.result);
+          rd.onerror = () => r(null);
+          rd.readAsDataURL(f);
+        });
+        if (!data) { toast('这首歌读不出来'); continue; }
+        o.songs.push({ name: f.name.replace(/\.[^.]+$/, ''), data: data });
+      }
+      save('ocs', ocs);
+      renderOcEditor(o.id);
+    });
+    let audioEl = null, playingIdx = -1;
+    const stop = () => {
+      if (audioEl) { audioEl.pause(); audioEl = null; }
+      playingIdx = -1;
+      box.querySelectorAll('.oc-song-play').forEach(b => { b.classList.remove('playing'); b.textContent = '▶'; });
+    };
+    box.querySelectorAll('[data-songplay]').forEach(btn => btn.addEventListener('click', () => {
+      const ix = Number(btn.dataset.songplay);
+      const sg = (o.songs||[])[ix];
+      if (!sg) return;
+      const wasThis = playingIdx === ix;
+      stop();
+      if (wasThis) return;
+      audioEl = new Audio(sg.data);
+      audioEl.volume = 0.8;
+      audioEl.addEventListener('ended', stop);
+      audioEl.play().then(() => {
+        playingIdx = ix;
+        btn.classList.add('playing');
+        btn.textContent = '❚❚';
+      }).catch(() => toast('浏览器拦了自动播放，再点一次'));
+    }));
+    box.querySelectorAll('[data-songdel]').forEach(btn => btn.addEventListener('click', () => {
+      const ix = Number(btn.dataset.songdel);
+      if (playingIdx === ix) stop();
+      o.songs = (o.songs||[]).filter((_, k) => k !== ix);
+      save('ocs', ocs);
+      renderOcEditor(o.id);
+    }));
+  })();
+
+  (function bindOcImages(){
+    const imgsBox = el('ocImgs'); if (!imgsBox) return;
+    const fileInput = el('ocImgInput');
+    if (fileInput) fileInput.addEventListener('change', async () => {
+      const files = Array.from(fileInput.files || []);
+      if (!files.length) return;
+      if (!Array.isArray(o.images)) o.images = [];
+      for (const f of files){
+        if (!/^image\//.test(f.type)) continue;
+        if (o.images.length >= 24){ toast('每个角色最多 24 张图'); break; }
+        const data = await new Promise(r => compressOcImage(f, r));
+        if (!data) { toast('这张图读不出来'); continue; }
+        o.images.push({ data: data });
+        if (!o.avatar) makeAvatarFrom(data, av => { if (av && !o.avatar){ o.avatar = av; save('ocs', ocs); renderOcList(); } });
+      }
+      save('ocs', ocs);
+      renderOcList();
+      renderOcEditor(o.id);
+    });
+    imgsBox.querySelectorAll('.oc-img[data-ix]').forEach(d => d.addEventListener('click', e => {
+      if (e.target.dataset && e.target.dataset.imgdel !== undefined) return;
+      const im = (o.images||[])[+d.dataset.ix]; if (!im) return;
+      makeAvatarFrom(im.data, av => {
+        if (!av) { toast('头像生成失败'); return; }
+        o.avatar = av; save('ocs', ocs); renderOcList(); renderOcEditor(o.id); toast('已设为头像');
+      });
+    }));
+    imgsBox.querySelectorAll('[data-imgdel]').forEach(b => b.addEventListener('click', e => {
+      e.stopPropagation();
+      const ix = +b.dataset.imgdel;
+      const im = (o.images||[])[ix];
+      o.images = (o.images||[]).filter((_,i) => i !== ix);
+      if (im && o.avatar === im.data) delete o.avatar;
+      save('ocs', ocs); renderOcList(); renderOcEditor(o.id);
+    }));
+  })();
+  box.querySelectorAll('[data-six]').forEach(s => s.addEventListener('input', () => {
+    six[s.dataset.six] = parseInt(s.value,10); o.six = six; save('ocs', ocs);
+    s.nextElementSibling.textContent = s.value;
+    drawRadar(el('sixCanvas').getContext('2d'), 100, 100, 78, six, o.color || '#c04a36');
+  }));
+  el('colorPick').addEventListener('input', () => { o.color = el('colorPick').value; save('ocs',ocs); renderOcList(); renderKept(o); });
+  el('extractBtn').addEventListener('click', () => el('imgFile').click());
+  el('imgFile').addEventListener('change', ev => {
+    const f = ev.target.files[0]; if (!f) return;
+    extractColors(f, cols => { renderSwatches(o, cols); toast('已提取 ' + cols.length + ' 个主色'); });
+  });
+  el('addRelBtn').addEventListener('click', () => {
+    (o.relations = o.relations || []).push({ to:'', label:'' }); save('ocs',ocs); renderOcEditor(o.id);
+  });
+  box.querySelectorAll('[data-rk]').forEach(inp => inp.addEventListener('input', () => {
+    const i = +inp.dataset.ri, k = inp.dataset.rk; o.relations[i][k] = inp.value; save('ocs',ocs);
+    if (k==='to') renderOcGraph();
+  }));
+  box.querySelectorAll('[data-rdel]').forEach(b => b.addEventListener('click', () => {
+    o.relations.splice(+b.dataset.rdel,1); save('ocs',ocs); renderOcEditor(o.id); renderOcGraph();
+  }));
+}
+function renderSwatches(o, cols){
+  const box = el('swatches'); const kept = o.palette || (o.palette = []);
+  const base = (cols && cols.length) ? cols : OC_PALETTE;
+  box.innerHTML = base.map(c =>
+    '<div class="sw' + (kept.indexOf(c)>=0?' on':'') + '" data-c="' + c + '" style="background:' + c + '"></div>').join('');
+  box.querySelectorAll('.sw').forEach(s => s.addEventListener('click', () => {
+    const c = s.dataset.c; const i = kept.indexOf(c);
+    if (i>=0) kept.splice(i,1); else kept.push(c);
+    save('ocs',ocs); s.classList.toggle('on'); renderKept(o);
+  }));
+  renderKept(o);
+}
+function renderKept(o){
+  const box = el('kept'); const kept = o.palette || [];
+  box.innerHTML = kept.length ? kept.map(c => '<i style="background:' + c + '" title="' + c + '"></i>').join('')
+    : '<span style="font-size:12px;color:var(--text-2)">未选择代表色</span>';
+}
+
+function extractColors(file, cb){
+  const rd = new FileReader();
+  rd.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const S = 96, c = document.createElement('canvas'); c.width = S; c.height = S;
+      const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, S, S);
+      let data; try { data = ctx.getImageData(0,0,S,S).data; } catch(err){ cb([]); return; }
+      const buckets = {};
+      for (let i=0;i<data.length;i+=4){
+        const r=data[i],g=data[i+1],b=data[i+2]; if (data[i+3]<128) continue;
+        const key = ((r>>5)<<10)|((g>>5)<<5)|(b>>5);
+        (buckets[key] = buckets[key] || {r:0,g:0,b:0,n:0});
+        buckets[key].r+=r; buckets[key].g+=g; buckets[key].b+=b; buckets[key].n++;
+      }
+      const arr = Object.keys(buckets).map(k=>buckets[k]).map(o=>({
+        r:Math.round(o.r/o.n), g:Math.round(o.g/o.n), b:Math.round(o.b/o.n), n:o.n }))
+        .sort((a,b)=>b.n-a.n).slice(0,8);
+      cb(arr.map(o => '#' + [o.r,o.g,o.b].map(v=>('0'+v.toString(16)).slice(-2)).join('')));
+    };
+    img.onerror = () => cb([]);
+    img.src = e.target.result;
+  };
+  rd.readAsDataURL(file);
+}
+
+function graphLayoutKey(list){
+  return 'ocgraph:' + list.map(o => o.id).slice().sort().join(',');
+}
+function computeGraphLayout(list, W, H){
+  /* Force-directed: every pair repels, relations pull, a weak centring force
+     keeps the cloud from drifting off-canvas. Runs once and is cached, so
+     clicking a node never reshuffles the map. */
+  const n = list.length, cx = W/2, cy = H/2;
+  const pos = {}, vx = {}, vy = {};
+  const R0 = Math.min(W, H) * 0.30;
+  list.forEach((o, i) => {
+    const a = (i / n) * Math.PI * 2 - Math.PI / 2;
+    pos[o.id] = { x: cx + R0 * Math.cos(a) + (Math.random() - .5) * 16,
+                  y: cy + R0 * Math.sin(a) + (Math.random() - .5) * 16 };
+    vx[o.id] = 0; vy[o.id] = 0;
+  });
+  const links = [];
+  list.forEach(o => (o.relations || []).forEach(r => {
+    if (pos[r.to] && r.to !== o.id) links.push([o.id, r.to]);
+  }));
+  const REP = 110000, REST = 160, SPRING = .045, DAMP = .80, PAD = 74;
+  for (let it = 0; it < 320; it++){
+    const fx = {}, fy = {};
+    list.forEach(o => { fx[o.id] = 0; fy[o.id] = 0; });
+    for (let i = 0; i < n; i++){
+      for (let k = i + 1; k < n; k++){
+        const a = list[i].id, b = list[k].id;
+        let dx = pos[b].x - pos[a].x, dy = pos[b].y - pos[a].y;
+        let d2 = dx*dx + dy*dy;
+        if (d2 < 1){ dx = Math.random() - .5; dy = Math.random() - .5; d2 = 1; }
+        const d = Math.sqrt(d2), f = REP / d2;
+        const ux = dx / d * f, uy = dy / d * f;
+        fx[a] -= ux; fy[a] -= uy; fx[b] += ux; fy[b] += uy;
+      }
+    }
+    links.forEach(function(pair){
+      const a = pair[0], b = pair[1];
+      const dx = pos[b].x - pos[a].x, dy = pos[b].y - pos[a].y;
+      const d = Math.sqrt(dx*dx + dy*dy) || 1;
+      const f = (d - REST) * SPRING;
+      const ux = dx / d * f, uy = dy / d * f;
+      fx[a] += ux; fy[a] += uy; fx[b] -= ux; fy[b] -= uy;
+    });
+    list.forEach(o => {
+      fx[o.id] += (cx - pos[o.id].x) * .012;
+      fy[o.id] += (cy - pos[o.id].y) * .012;
+      /* clamp velocity: one strong pull must not launch a node off-screen */
+      vx[o.id] = Math.max(-28, Math.min(28, (vx[o.id] + fx[o.id]) * DAMP));
+      vy[o.id] = Math.max(-28, Math.min(28, (vy[o.id] + fy[o.id]) * DAMP));
+      pos[o.id].x += vx[o.id];
+      pos[o.id].y += vy[o.id];
+    });
+  }
+  list.forEach(o => {
+    pos[o.id].x = Math.max(PAD, Math.min(W - PAD, pos[o.id].x));
+    pos[o.id].y = Math.max(PAD, Math.min(H - PAD - 22, pos[o.id].y));
+  });
+  return pos;
+}
+function renderOcGraph(){
+  const box = el('ocGraph'); const list = ocs;
+  if (!list.length){ box.innerHTML = '<div class="empty">暂无角色，无法绘制关系网。</div>'; return; }
+  const W = 900, H = Math.max(560, 200 + list.length * 26);
+  const key = graphLayoutKey(list);
+  let pos = null;
+  try { pos = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { pos = null; }
+  if (!pos || !list.every(o => pos[o.id] && typeof pos[o.id].x === 'number')){
+    pos = computeGraphLayout(list, W, H);
+    try { localStorage.setItem(key, JSON.stringify(pos)); } catch (e) {}
+  }
+  let edges = '';
+  let edgeSeq = 0;
+  list.forEach(o => (o.relations || []).forEach(r => {
+    if (!pos[r.to] || !pos[o.id]) return;
+    const hot = graphFocus && (graphFocus === o.id || graphFocus === r.to);
+    const ri = (o.relations || []).indexOf(r);
+    const x1 = pos[o.id].x, y1 = pos[o.id].y, x2 = pos[r.to].x, y2 = pos[r.to].y;
+    /* a fat transparent twin sits on top so the thin line is still clickable */
+    edges += '<line class="ghit" data-from="' + o.id + '" data-to="' + r.to + '" data-idx="' + ri + '"'
+      + ' x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"'
+      + ' stroke="transparent" stroke-width="14" style="cursor:pointer"/>';
+    edges += '<line class="gedge" x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"'
+      + ' stroke="' + (hot ? 'var(--accent)' : 'rgba(255,255,255,.20)') + '" stroke-width="' + (hot ? 2 : 1) + '"/>';
+    if (r.label){
+      /* Stagger the label along its own line. Every pair used to put the text
+         at the exact midpoint, so two relations between neighbouring nodes
+         printed on top of each other. Three stops is enough in practice. */
+      const t = [0.5, 0.34, 0.66][edgeSeq % 3];
+      edgeSeq += 1;
+      const mx = x1 + (x2 - x1) * t, my = y1 + (y2 - y1) * t;
+      edges += '<text class="gedge-label" x="' + mx + '" y="' + my + '" fill="' + (hot ? 'var(--accent)' : 'var(--text-2)') + '"'
+        + ' font-size="10" text-anchor="middle">' + escapeHtml(r.label) + '</text>';
+    }
+  }));
+  let nodes = '';
+  list.forEach(o => {
+    const p = pos[o.id];
+    const linked = (o.relations || []).some(r => r.to === graphFocus)
+      || list.some(x => x.id === graphFocus && (x.relations || []).some(r => r.to === o.id));
+    const dim = graphFocus && graphFocus !== o.id && !linked;
+    nodes += '<g class="gnode" data-id="' + o.id + '" opacity="' + (dim ? .35 : 1) + '">'
+      + '<circle cx="' + p.x + '" cy="' + p.y + '" r="22" fill="' + (o.color || '#3a3a4a') + '"'
+      + ' stroke="rgba(255,255,255,.4)" stroke-width="1"/>'
+      + '<text x="' + p.x + '" y="' + (p.y + 38) + '" text-anchor="middle">'
+      + escapeHtml(o.name.split('（')[0]) + '</text></g>';
+  });
+  box.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">' + edges + nodes + '</svg>';
+  const svg = box.querySelector('svg');
+  var dragNode = null, dragMoved = false, ghostLine = null;
+  function svgPoint(ev){
+    var pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+    return pt.matrixTransform(svg.getScreenCTM().inverse());
+  }
+  box.querySelectorAll('.gnode').forEach(function(g){
+    g.addEventListener('click', function(){
+      if (dragMoved){ dragMoved = false; return; }   /* a drag is not a click */
+      graphFocus = (graphFocus === g.dataset.id) ? null : g.dataset.id;
+      renderOcGraph();
+    });
+    g.addEventListener('pointerdown', function(ev){
+      if (ev.button !== 0) return;
+      dragNode = g.dataset.id; dragMoved = false;
+      var p0 = svgPoint(ev);
+      ghostLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      ghostLine.setAttribute('stroke', 'var(--accent)');
+      ghostLine.setAttribute('stroke-width', '1.5');
+      ghostLine.setAttribute('stroke-dasharray', '5 4');
+      ghostLine.setAttribute('pointer-events', 'none');
+      ghostLine.setAttribute('x1', p0.x); ghostLine.setAttribute('y1', p0.y);
+      ghostLine.setAttribute('x2', p0.x); ghostLine.setAttribute('y2', p0.y);
+      ghostLine.id = 'dragGhost';
+      svg.appendChild(ghostLine);
+      /* deliberately NO setPointerCapture: capturing rewrites ev.target on
+         pointerup, so the drop would always resolve back to this node. The
+         listeners live on the <svg> instead, which also keeps tracking once
+         the cursor leaves the circle. */
+      ev.preventDefault();
+    });
+  });
+  svg.addEventListener('pointermove', function(ev){
+    if (!dragNode || !ghostLine) return;
+    var p = svgPoint(ev);
+    ghostLine.setAttribute('x2', p.x);
+    ghostLine.setAttribute('y2', p.y);
+    /* a 6px dead zone, otherwise a click with a shaky hand becomes a drag */
+    if (!dragMoved){
+      var dx = p.x - Number(ghostLine.getAttribute('x1'));
+      var dy = p.y - Number(ghostLine.getAttribute('y1'));
+      if (dx * dx + dy * dy > 36) dragMoved = true;
+    }
+  });
+  svg.addEventListener('pointerup', function(ev){
+    if (!dragNode) return;
+    if (ghostLine){ ghostLine.remove(); ghostLine = null; }
+    var fromId = dragNode; dragNode = null;
+    if (!dragMoved){ dragMoved = false; return; }
+    /* elementFromPoint: what is under the cursor now, regardless of which
+       element owns the event */
+    var under = document.elementFromPoint(ev.clientX, ev.clientY);
+    var nodeEl = (under && under.closest) ? under.closest('.gnode') : null;
+    var toId = nodeEl ? nodeEl.dataset.id : null;
+    if (!toId || toId === fromId){ dragMoved = false; return; }
+    var from = ocById(fromId), to = ocById(toId);
+    if (!from || !to) { dragMoved = false; return; }
+    var label = window.prompt('「' + from.name + '」→「' + to.name + '」是什么关系？', '');
+    if (label === null){ dragMoved = false; return; }
+    from.relations = from.relations || [];
+    from.relations.push({ to: toId, label: label.trim() });
+    save('ocs', ocs); pushData();
+    dragMoved = true;       /* swallow the click that follows the drop */
+    renderOcGraph();
+    toast('关系已建立');
+  });
+  svg.addEventListener('pointercancel', function(){
+    if (ghostLine){ ghostLine.remove(); ghostLine = null; }
+    dragNode = null; dragMoved = false;
+  });
+  /* click an edge to edit its label / delete it -- no separate editor dialog */
+  box.querySelectorAll('.ghit').forEach(function(hit){
+    hit.addEventListener('click', function(){
+      const from = ocs.find(x => x.id === hit.dataset.from);
+      if (!from || !from.relations) return;
+      const rel = from.relations[Number(hit.dataset.idx)];
+      if (!rel) return;
+      const other = ocs.find(x => x.id === rel.to);
+      openRelEditor(from, rel, other);
+    });
+  });
+}
+function openRelEditor(from, rel, other) {
+  const host = el('ocGraph');
+  let panel = document.getElementById('relEditor');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'relEditor';
+    panel.className = 'rel-editor';
+    host.parentNode.insertBefore(panel, host.nextSibling);
+  }
+  panel.style.display = 'block';
+  panel.innerHTML = '';
+  const head = document.createElement('div');
+  head.className = 'rel-editor-head';
+  head.textContent = (from.name || '') + ' → ' + ((other && other.name) || '未知');
+  panel.appendChild(head);
+
+  const row = document.createElement('div');
+  row.className = 'rel-editor-row';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = rel.label || '';
+  input.placeholder = '关系，例如 母女 / 上下级';
+  row.appendChild(input);
+
+  const okBtn = document.createElement('button');
+  okBtn.textContent = '保存';
+  okBtn.addEventListener('click', () => {
+    rel.label = input.value.trim();
+    save('ocs', ocs);
+    panel.style.display = 'none';
+    renderOcGraph();
+  });
+  const delBtn = document.createElement('button');
+  delBtn.className = 'danger';
+  delBtn.textContent = '删除';
+  delBtn.addEventListener('click', () => {
+    from.relations = (from.relations || []).filter(x => x !== rel);
+    save('ocs', ocs);
+    panel.style.display = 'none';
+    renderOcGraph();
+  });
+  const cancel = document.createElement('button');
+  cancel.textContent = '取消';
+  cancel.addEventListener('click', () => { panel.style.display = 'none'; });
+
+  row.appendChild(okBtn); row.appendChild(delBtn); row.appendChild(cancel);
+  panel.appendChild(row);
+  input.focus();
+  input.select();
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') okBtn.click(); });
+}
+
+
+/* ===== 世界地图 (2026-10-21)：每世界一图，pin 可拖拽、可关联角色 ===== */
+let curMapId = null, pinMode = false, dragPin = null, cardPin = null;
+
+function mapById(id){ return maps.find(m => m.id === id); }
+function mapOfWorld(wid){ return maps.find(m => m.worldId === wid); }
+
+/* 图片压缩：长边封顶 1600px，jpeg 质量自适应降到 ~1.6MB 以内（localStorage/云端都吃得下） */
+function compressMapImage(file, cb){
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = function(){
+    URL.revokeObjectURL(url);
+    try {
+      const MAXW = 1600;
+      const scale = Math.min(1, MAXW / img.width);
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width * scale));
+      c.height = Math.max(1, Math.round(img.height * scale));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      let q = 0.85, data = c.toDataURL('image/jpeg', q);
+      while (data.length > 1.6 * 1024 * 1024 && q > 0.4){ q -= 0.15; data = c.toDataURL('image/jpeg', q); }
+      cb(data);
+    } catch(e){ cb(null); }
+  };
+  img.onerror = function(){ URL.revokeObjectURL(url); cb(null); };
+  img.src = url;
+}
+
+
+function compressOcImage(file, cb){
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = function(){
+    URL.revokeObjectURL(url);
+    try {
+      const MAX = 1400;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width * scale));
+      c.height = Math.max(1, Math.round(img.height * scale));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      let q = 0.82, data = c.toDataURL('image/jpeg', q);
+      while (data.length > 900 * 1024 && q > 0.35){ q -= 0.12; data = c.toDataURL('image/jpeg', q); }
+      cb(data);
+    } catch(e){ cb(null); }
+  };
+  img.onerror = function(){ URL.revokeObjectURL(url); cb(null); };
+  img.src = url;
+}
+function makeAvatarFrom(dataUrl, cb){
+  const img = new Image();
+  img.onload = function(){
+    try {
+      const S = 240, side = Math.min(img.width, img.height);
+      const c = document.createElement('canvas');
+      c.width = S; c.height = S;
+      c.getContext('2d').drawImage(img, (img.width-side)/2, (img.height-side)/2, side, side, 0, 0, S, S);
+      cb(c.toDataURL('image/jpeg', 0.86));
+    } catch(e){ cb(null); }
+  };
+  img.onerror = function(){ cb(null); };
+  img.src = dataUrl;
+}
+function renderMap(){
+  const sel = el('mapWorldSel');
+  const prev = sel.value;
+  const list = orderedWorlds();
+  sel.innerHTML = list.map(w => '<option value="' + w.id + '">' + escapeHtml(w.name) + '</option>').join('');
+  if (prev && list.some(w => w.id === prev)) sel.value = prev;
+  const stage = el('mapStage'), wrap = el('mapWrap'), empty = el('mapEmpty');
+  closePinCard();
+  if (!list.length){
+    empty.textContent = '先在「世界」里建一个世界，再回来上传地图。';
+    empty.hidden = false; wrap.hidden = true; curMapId = null; return;
+  }
+  const w = worldById(sel.value) || list[0];
+  const m = mapOfWorld(w.id);
+  if (!m){
+    empty.textContent = '「' + w.name + '」还没有地图，点「上传地图」。';
+    empty.hidden = false; wrap.hidden = true; curMapId = null; return;
+  }
+  empty.hidden = true; wrap.hidden = false;
+  el('mapImg').src = m.img;
+  curMapId = m.id;
+  el('mapPins').innerHTML = (m.pins || []).map(p =>
+    '<div class="pin' + (p.ocId ? ' linked' : '') + '" data-id="' + p.id + '"'
+    + ' style="left:' + (p.x * 100) + '%;top:' + (p.y * 100) + '%" title="' + escapeHtml(p.name || '') + '"></div>').join('');
+  bindPinEvents();
+}
+
+function bindPinEvents(){
+  el('mapPins').querySelectorAll('.pin').forEach(p => {
+    p.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      const m = mapById(curMapId); if (!m) return;
+      const pin = (m.pins || []).find(x => x.id === p.dataset.id); if (!pin) return;
+      const rect = el('mapWrap').getBoundingClientRect();
+      dragPin = { pin: pin, el: p, rect: rect, moved: false, sx: e.clientX, sy: e.clientY };
+      p.classList.add('dragging');
+      try { p.setPointerCapture(e.pointerId); } catch(_){}
+    });
+    p.addEventListener('pointermove', e => {
+      if (!dragPin || dragPin.el !== p) return;
+      const dx = e.clientX - dragPin.sx, dy = e.clientY - dragPin.sy;
+      if (!dragPin.moved && Math.hypot(dx, dy) < 4) return;
+      dragPin.moved = true;
+      const nx = Math.min(1, Math.max(0, dragPin.pin.x + dx / dragPin.rect.width));
+      const ny = Math.min(1, Math.max(0, dragPin.pin.y + dy / dragPin.rect.height));
+      dragPin.pin.x = nx; dragPin.pin.y = ny;
+      p.style.left = (nx * 100) + '%'; p.style.top = (ny * 100) + '%';
+      dragPin.sx = e.clientX; dragPin.sy = e.clientY;
+    });
+    const finish = e => {
+      if (!dragPin || dragPin.el !== p) return;
+      const wasMoved = dragPin.moved, pin = dragPin.pin;
+      dragPin = null; p.classList.remove('dragging');
+      if (wasMoved){ save('maps', maps); toast('位置已保存'); }
+      else openPinCard(pin);
+    };
+    p.addEventListener('pointerup', finish);
+    p.addEventListener('pointercancel', () => { if (dragPin){ dragPin = null; p.classList.remove('dragging'); } });
+  });
+}
+
+function openPinCard(pin){
+  cardPin = pin;
+  el('pinName').value = pin.name || '';
+  el('pinOc').innerHTML = '<option value="">— 不关联角色 —</option>'
+    + ocs.map(o => '<option value="' + o.id + '"' + (o.id === pin.ocId ? ' selected' : '') + '>' + escapeHtml(o.name) + '</option>').join('');
+  el('pinCard').hidden = false;
+}
+function closePinCard(){ el('pinCard').hidden = true; cardPin = null; }
+
+function bindMapControls(){
+  el('mapWorldSel').addEventListener('change', renderMap);
+  el('mapUploadBtn').addEventListener('click', () => el('mapFile').click());
+  el('mapFile').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    const w = worldById(el('mapWorldSel').value);
+    if (!w) { toast('先建一个世界'); return; }
+    toast('压缩中…');
+    compressMapImage(f, data => {
+      if (!data) { toast('图片读取失败'); return; }
+      let m = mapOfWorld(w.id);
+      if (!m){ m = { id: t(), worldId: w.id, img: data, pins: [] }; maps.push(m); }
+      else m.img = data;
+      save('maps', maps); renderMap();
+      toast('地图已更新（' + Math.round(data.length / 1024) + ' KB）');
+      el('mapFile').value = '';
+    });
+  });
+  el('mapPinBtn').addEventListener('click', () => {
+    if (!curMapId) { toast('先上传地图'); return; }
+    pinMode = !pinMode;
+    el('mapStage').classList.toggle('pinning', pinMode);
+    el('mapPinBtn').textContent = pinMode ? '📍 点地图放置…' : '📍 放标记';
+    if (pinMode) closePinCard(); else el('mapPinBtn').textContent = '📍 放标记';
+  });
+  el('mapWrap').addEventListener('click', e => {
+    if (e.target.closest('.pin')) return;
+    if (!pinMode || !curMapId) return;
+    const m = mapById(curMapId); if (!m) return;
+    const rect = el('mapWrap').getBoundingClientRect();
+    const pin = { id: t(), x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height, name: '标记 ' + ((m.pins || []).length + 1), ocId: '' };
+    m.pins = m.pins || []; m.pins.push(pin);
+    save('maps', maps);
+    pinMode = false;
+    el('mapStage').classList.remove('pinning');
+    el('mapPinBtn').textContent = '📍 放标记';
+    renderMap(); openPinCard(pin);
+  });
+  el('mapDelBtn').addEventListener('click', () => {
+    const w = worldById(el('mapWorldSel').value);
+    const m = w && mapOfWorld(w.id);
+    if (!m) { toast('此世界还没有地图'); return; }
+    if (!confirm('删除「' + w.name + '」的地图和全部标记？')) return;
+    maps = maps.filter(x => x.id !== m.id);
+    save('maps', maps); renderMap(); toast('地图已删除');
+  });
+  el('pinSave').addEventListener('click', () => {
+    if (!cardPin) return;
+    cardPin.name = el('pinName').value.trim() || '未命名标记';
+    cardPin.ocId = el('pinOc').value;
+    save('maps', maps); renderMap(); toast('标记已保存');
+  });
+  el('pinDel').addEventListener('click', () => {
+    if (!cardPin || !curMapId) return;
+    const m = mapById(curMapId);
+    m.pins = (m.pins || []).filter(p => p.id !== cardPin.id);
+    save('maps', maps); closePinCard(); renderMap(); toast('标记已删除');
+  });
+}
+
+function renderOcCheck(){
+  const box = el('ocCheck'); const items = [];
+  const names = {}; ocs.forEach(o => { names[o.name] = (names[o.name]||0)+1; });
+  Object.keys(names).forEach(n => { if (names[n]>1) items.push(['bad','重名：' + n + '（' + names[n] + ' 次）']); });
+  ocs.forEach(o => {
+    const miss = [];
+    if (!o.age) miss.push('年龄'); if (!o.origin) miss.push('出身');
+    if (!o.trait) miss.push('特质'); if (!o.hook) miss.push('引子');
+    if (miss.length) items.push(['bad', (o.name||'未命名') + ' 缺：' + miss.join('、')]);
+    const six = o.six||{}; const empty = SIX_KEYS.filter(k => !six[k]);
+    if (empty.length) items.push(['warn', (o.name||'未命名') + ' 六维未填：' + empty.join('、')]);
+    (o.relations||[]).forEach(r => { if (r.to && !ocById(r.to)) items.push(['bad', (o.name||'') + ' → 悬空关系（指向已删除角色）']); });
+  });
+  if (!items.length){ box.innerHTML = '<div class="chk good">✓ 暂未发现问题。</div>'; return; }
+  box.innerHTML = items.map(([lv,msg]) => '<div class="chk ' + (lv==='bad'?'bad':'') + '">' + escapeHtml(msg) + '</div>').join('');
+}
+
+function renderOcExport(){
+  const sel = el('ocExportSel');
+  sel.innerHTML = ocs.map(o => '<option value="' + o.id + '">' + escapeHtml(o.name) + '</option>').join('');
+  if (ocs.length){ drawOcCard(el('ocCardCanvas'), ocById(sel.value) || ocs[0]); }
+}
+const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent);
+function downloadDataUrl(url, name){
+  /* iOS Safari 忽略 download 属性（a.click 会直接导航到图片），
+     改走新标签页打开、用户长按保存；window.open 被拦则回退普通点击 */
+  if (IS_IOS){ const w = window.open(url, '_blank'); if (w) return; }
+  const a = document.createElement('a'); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+function orderedWorlds(){
+  const head = worldOrder.map(worldById).filter(Boolean);
+  const tail = worlds.filter(w => worldOrder.indexOf(w.id) === -1);
+  return head.concat(tail);
+}
+function renderOcWorlds(){
+  const box = el('ocWorldList'); const list = orderedWorlds();
+  if (!list.length){ box.innerHTML = '<div class="empty">还没有世界。</div>'; renderMap(); return; }
+  box.innerHTML = list.map(w =>
+    '<div class="wcard' + (w.id===curWorldId?' sel':'') + '" data-id="' + w.id + '">'
+    + '<span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:' + (w.color||'#888') + ';margin-right:8px"></span>'
+    + '<span class="nm">' + escapeHtml(w.name) + '</span>'
+    + '<button data-wdel="' + w.id + '" style="float:right;background:transparent;border:0;color:#f7768e;cursor:pointer">✕</button></div>').join('');
+  box.querySelectorAll('.wcard').forEach(c => c.addEventListener('click', e => {
+    if (e.target.dataset && e.target.dataset.wdel) return;
+    curWorldId = c.dataset.id; renderOcWorlds(); renderOcWorldEditor(curWorldId);
+  }));
+  box.querySelectorAll('[data-wdel]').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!confirm('删除世界？')) return;
+    worlds = worlds.filter(w => w.id !== b.dataset.wdel);
+    worldOrder = worldOrder.filter(id => id !== b.dataset.wdel);
+    if (curWorldId === b.dataset.wdel) curWorldId = null;
+    save('worlds', worlds); save('worldOrder', worldOrder);
+    renderOcWorlds(); renderOcWorldEditor(curWorldId);
+  }));
+  if (window.Sortable && !box._sortable){
+    box._sortable = new Sortable(box, { animation:160, delay:60, delayOnTouchOnly:true,
+      onEnd: () => { worldOrder = Array.from(box.children).map(c=>c.dataset.id).filter(Boolean); save('worldOrder', worldOrder); renderOcWorlds(); toast('排序已保存'); }
+    });
+  }
+  renderMap();
+}
+function renderOcWorldEditor(id){
+  const box = el('ocWorldEditor'); const w = worldById(id);
+  if (!w){ box.innerHTML = '<div class="empty">选中一个世界编辑名称与编年史。</div>'; return; }
+  box.innerHTML =
+    '<div class="fld"><label>名称</label><input id="w_name" value="' + escapeHtml(w.name) + '"></div>'
+    + '<div class="fld"><label>简介</label><textarea id="w_desc" rows="3">' + escapeHtml(w.desc||'') + '</textarea></div>'
+    + '<div class="fld"><label>代表色</label><input type="color" id="w_color" value="' + (w.color||'#7aa2f7') + '"></div>'
+    + '<div class="fld"><label>编年史</label><textarea id="w_chronicle" rows="10">' + escapeHtml(w.chronicle||'') + '</textarea></div>'
+    + '<button class="btn sm" id="w_save">保存世界</button>';
+  el('w_save').addEventListener('click', () => {
+    w.name = el('w_name').value; w.desc = el('w_desc').value;
+    w.color = el('w_color').value; w.chronicle = el('w_chronicle').value;
+    save('worlds', worlds); renderOcWorlds(); toast('世界已保存');
+  });
+  el('w_color').addEventListener('input', () => { w.color = el('w_color').value; save('worlds',worlds); renderOcWorlds(); });
+}
+
+/* ===== AI 识别导入 (2026-10-19) ===== */
+const AI_CFG_KEY = 'wb_oc_ai_cfg';
+function aiCfg(){ try { return JSON.parse(localStorage.getItem(AI_CFG_KEY) || '{}'); } catch(e){ return {}; } }
+function saveAiCfg(c){ try { localStorage.setItem(AI_CFG_KEY, JSON.stringify(c)); } catch(e){} }
+function aiCfgFill(){ const c = aiCfg(); el('aiBase').value = c.base||''; el('aiModel').value = c.model||''; el('aiKey').value = c.key||''; }
+function aiCfgSave(){ saveAiCfg({ base: el('aiBase').value.trim(), model: el('aiModel').value.trim(), key: el('aiKey').value.trim() }); toast('API 设置已保存（仅本浏览器）'); }
+let aiParsed = [];
+const AI_LABELS = { name:['姓名','名字','名称','角色','角色名'], archetype:['派系','阵营','组织','身份','职业','归属'], age:['年龄','年纪'], trait:['性格','性格特点','个性'], hook:['称号','标签','一句话','印象'], origin:['出身','来源','故乡'], hobby:['爱好','兴趣'], background:['背景','简介','设定','人物设定','故事'] };
+function aiLocalParse(text){
+  /* 无 key 兜底：按行扫「标签：值」，空行或分隔线切多个角色 */
+  const blocks = text.split(/\n\s*\n|\n\s*[-\u2014=]{3,}\s*\n/).map(s => s.trim()).filter(Boolean);
+  const out = [];
+  for (const b of blocks){
+    const card = { name:'', archetype:'', age:'', trait:'', hook:'', origin:'', hobby:'', background:'' };
+    let hit = false;
+    for (const ln of b.split(/\n+/)){
+      const m = /^\s*[-\u00b7\u2022]?\s*([^\uff1a:]{1,12})\s*[\uff1a:]\s*(.+?)\s*$/.exec(ln);
+      if (!m) continue;
+      const lab = m[1].replace(/[\u3010\u3011\[\]\uff08\uff09()]/g, '');
+      const val = m[2].trim();
+      let done = false;
+      for (const k in AI_LABELS){
+        if (AI_LABELS[k].some(a => lab === a || lab.includes(a))){ card[k] = val; hit = true; done = true; break; }
+      }
+      if (done) continue;
+      const rm = /^(.+?)\s*[\u2014\-\u2013>\uff1e]+\s*(.+)$/.exec(val);
+      if (rm && /\u5173\u7cfb/.test(lab)){ card.relations = card.relations || []; card.relations.push({ target: rm[1].trim(), label: rm[2].trim() }); hit = true; }
+    }
+    if (!card.name){ const nm = /^\s*[-\u00b7\u2022]?\s*([^\s\uff1a:\u3010\u3011]{2,12})\s*$/.exec(b.split(/\n+/)[0] || ''); if (nm) card.name = nm[1]; }
+    if (card.name) out.push(card);
+  }
+  return out;
+}
+function fileToDataUrl(f){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); }); }
+async function aiParse(){
+  const text = el('aiText').value.trim();
+  const files = Array.from(el('aiImgs').files || []);
+  if (!text && !files.length){ toast('先粘贴文字或上传图片'); return; }
+  const c = aiCfg();
+  el('aiParseBtn').disabled = true; el('aiParseBtn').textContent = '识别中…';
+  try {
+    let arr = null;
+    if (c.key && c.base){
+      const content = [];
+      if (text) content.push({ type:'text', text: text });
+      for (const f of files){ content.push({ type:'image_url', image_url:{ url: await fileToDataUrl(f) } }); }
+      const sys = '你是 OC 角色卡整理助手。从用户输入（文字和/或图片）提取角色信息，只输出 JSON 数组，不要输出其他文字。元素字段：name(姓名),archetype(派系/身份),age(年龄),trait(性格),hook(一句话印象),origin(出身),hobby(爱好),background(背景设定),quotes(台词数组),relations(关系数组，元素{target:对方姓名,label:关系描述}),color(主题色#rrggbb，可空)。缺的给空字符串或空数组，不要编造。';
+      const r = await fetch(c.base.replace(/\/+$/,'') + '/chat/completions', {
+        method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + c.key },
+        body: JSON.stringify({ model: c.model || 'gpt-4o-mini', messages:[{ role:'system', content:sys },{ role:'user', content:content }], temperature:0.2 })
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + (await r.text()).slice(0,120));
+      const j = await r.json();
+      const raw = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '';
+      const mm = /\[[\s\S]*\]/.exec(raw);
+      if (!mm) throw new Error('AI 未返回角色数据');
+      arr = JSON.parse(mm[0]);
+    } else {
+      if (files.length){ toast('未配置 API Key，暂只能识别文字'); return; }
+      arr = aiLocalParse(text);
+      if (!arr.length){ toast('没识别出角色，试试「姓名：XXX」格式'); return; }
+      toast('本地规则识别（未配置 API）');
+    }
+    aiParsed = (Array.isArray(arr) ? arr : []).filter(x => x && x.name);
+    aiRenderPreview();
+  } catch(e){ toast('识别失败：' + e.message); }
+  finally { el('aiParseBtn').disabled = false; el('aiParseBtn').textContent = '识别'; }
+}
+function aiRenderPreview(){
+  const box = el('aiPreview');
+  if (!aiParsed.length){ box.innerHTML = '<div style="font-size:12.5px;color:var(--text-2);">没有可导入的角色。</div>'; return; }
+  box.innerHTML = '<div style="font-size:12.5px;color:var(--text-2);margin-bottom:8px;">识别到 ' + aiParsed.length + ' 个角色，勾选后导入：</div>'
+    + aiParsed.map((p, i) =>
+      '<label style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:rgba(0,0,0,.2);cursor:pointer;">'
+      + '<input type="checkbox" data-ai="' + i + '" checked style="margin-top:3px;width:16px;height:16px;flex:none;">'
+      + '<span><b>' + escapeHtml(p.name||'?') + '</b>'
+      + (p.archetype ? ' <span style="color:var(--text-2);font-size:12px;">· ' + escapeHtml(p.archetype) + '</span>' : '')
+      + (p.age ? ' <span style="color:var(--text-2);font-size:12px;">· ' + escapeHtml(String(p.age)) + '</span>' : '')
+      + (p.background ? '<div style="font-size:12px;color:var(--text-2);margin-top:3px;">' + escapeHtml(String(p.background).slice(0,80)) + (String(p.background).length>80?'…':'') + '</div>' : '')
+      + '</span></label>').join('')
+    + '<button class="btn" id="aiImportBtn">导入选中角色</button>';
+  el('aiImportBtn').addEventListener('click', aiImport);
+}
+function aiImport(){
+  const picks = Array.from(el('aiPreview').querySelectorAll('input[data-ai]:checked')).map(x => aiParsed[+x.dataset.ai]);
+  if (!picks.length){ toast('没勾选角色'); return; }
+  let cnt = 0;
+  for (const p of picks){
+    ocs.push({ id:t(), name:String(p.name||'').slice(0,40), archetype:String(p.archetype||'').slice(0,60),
+      worldId: worlds[0] && worlds[0].id, age:String(p.age||''), origin:String(p.origin||''), hobby:String(p.hobby||''),
+      color: /^#[0-9a-f]{6}$/i.test(p.color||'') ? p.color : OC_PALETTE[cnt % OC_PALETTE.length],
+      six:{}, trait:String(p.trait||''), hook:String(p.hook||''), background:String(p.background||''),
+      quotes: Array.isArray(p.quotes) ? p.quotes.map(String) : [],
+      relations: Array.isArray(p.relations) ? p.relations.filter(r => r && r.target).map(r => ({ target:String(r.target).slice(0,40), label:String(r.label||'').slice(0,30) })) : [],
+      palette:[] });
+    cnt++;
+  }
+  save('ocs', ocs);
+  renderOcList(); renderOcEditor(curOcId); renderOcGraph(); renderOcCheck(); renderOcExport();
+  toast('已导入 ' + cnt + ' 个角色');
+  el('aiPreview').innerHTML = ''; el('aiText').value = ''; el('aiImgs').value = ''; el('aiImgNames').textContent = '';
+  aiParsed = [];
+}
+
+/* ===== 打包下载 (2026-10-19) ===== */
+function downloadBlob(name, data, mime){
+  const b = new Blob([data], { type: mime });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+}
+function dlJson(){
+  const payload = { app:'oc-tool', version:1, exportedAt:new Date().toISOString(), worlds:worlds, ocs:ocs, order:order, worldOrder:worldOrder, maps:maps };
+  downloadBlob('oc-data-' + new Date().toISOString().slice(0,10) + '.json', JSON.stringify(payload, null, 2), 'application/json');
+  toast('已下载 JSON（' + ocs.length + ' 角色 / ' + worlds.length + ' 世界）');
+}
+function dlTxt(){
+  const L = [];
+  L.push('OC 设定集 · 导出于 ' + new Date().toLocaleString());
+  L.push('角色 ' + ocs.length + ' 个 · 世界 ' + worlds.length + ' 个');
+  L.push('='.repeat(30));
+  for (const w of worlds){
+    L.push('', '【世界】' + w.name + (w.color ? '（' + w.color + '）' : ''));
+    if (w.desc) L.push(w.desc);
+    if (w.chronicle){ L.push('', '编年史：'); L.push(w.chronicle); }
+  }
+  for (const o of ocs){
+    const w = worldById(o.worldId);
+    L.push('', '-'.repeat(30));
+    L.push('【角色】' + o.name + (o.archetype ? ' · ' + o.archetype : '') + (w ? ' · ' + w.name : ''));
+    const rows = [['年龄',o.age],['出身',o.origin],['爱好',o.hobby],['性格',o.trait],['印象',o.hook],['代表色',o.color]];
+    for (const r of rows) if (r[1]) L.push(r[0] + '：' + r[1]);
+    if (o.background){ L.push('背景：'); L.push(o.background); }
+    if (o.quotes && o.quotes.length){ L.push('台词：'); o.quotes.forEach(q => L.push('  「' + q + '」')); }
+    if (o.relations && o.relations.length){
+      L.push('关系：');
+      o.relations.forEach(r => { const tg = ocById(r.target); L.push('  ' + (tg ? tg.name : r.target) + ' — ' + (r.label||'')); });
+    }
+  }
+  downloadBlob('oc-set-' + new Date().toISOString().slice(0,10) + '.txt', L.join('\n'), 'text/plain;charset=utf-8');
+  toast('已下载设定集 TXT');
+}
+
+
+/* ===== 登录门 / 云端同步 (2026-10-19) ===== */
+function showGate(msg, setup){
+  const g = el('authGate');
+  g.classList.remove('hide');
+  el('agErr').textContent = msg || '';
+  g._setup = !!setup;
+  el('agPass2').style.display = setup ? '' : 'none';
+  el('agGo').textContent = setup ? '创建账号并进入' : '登录';
+  el('agGo').disabled = false;
+  el('agTip').textContent = setup ? '首次使用：设置你的账号（密码至少 6 位）' : '登录后同步你的 OC；云端数据仅你的账号可见';
+  if (!msg) setTimeout(() => el('agUser').focus(), 50);
+}
+function hideGate(){ el('authGate').classList.add('hide'); }
+async function boot(){
+  let st = null;
+  try { st = await (await fetch('/api/oc/status')).json(); }
+  catch(e){ /* 服务器暂不可达也放行游客态 */ }
+  const tk = token();
+  if (tk){
+    try {
+      const r = await fetch('/api/oc/me', { headers: { 'Authorization': 'Bearer ' + tk } });
+      if (r.ok){ enter(await r.json().then(x => x.username)); return; }
+    } catch(e){}
+    localStorage.removeItem(TOKEN_KEY);
+  }
+  enterGuest(st);
+}
+/* 游客态：页面完整可用，数据只存本机，不碰云端 */
+function enterGuest(st){
+  USER = ''; hideGate(); refreshWho(); renderAll();
+  try { localStorage.removeItem('wb_oc_cloudpack'); } catch(e){}
+  if (st && st.needsBootstrap) toast('提示：点右上角「☁ 云同步」可创建账号');
+}
+async function enter(username){
+  USER = username;
+  hideGate();
+  refreshWho();
+  const H = { 'Authorization': 'Bearer ' + token() };
+  let data = null;
+  try {
+    const dr = await fetch('/api/oc/data', { headers: H });
+    if (dr.ok) data = await dr.json();
+  } catch(e){ toast('云端拉取失败，先用本地缓存'); }
+  const hasCloud = data && ((data.ocs && data.ocs.length) || (data.worlds && data.worlds.length));
+  if (hasCloud){
+    worlds = data.worlds || []; ocs = data.ocs || [];
+    order = data.order || []; worldOrder = data.worldOrder || [];
+    maps = data.maps || [];
+    factions = Array.isArray(data.factions) ? data.factions : [];
+    save('worlds', worlds); save('ocs', ocs); save('order', order); save('worldOrder', worldOrder); save('maps', maps); save('factions', factions);
+  } else {
+    /* 云端空：把本浏览器里旧版游客数据迁上去 */
+    const legacy = findLegacy();
+    if (legacy){
+      worlds = legacy.worlds; ocs = legacy.ocs; order = legacy.order; worldOrder = legacy.worldOrder;
+      save('worlds', worlds); save('ocs', ocs); save('order', order); save('worldOrder', worldOrder);
+      await pushData();
+      toast('旧数据已迁移到云端');
+    }
+  }
+  curOcId = null; curWorldId = null; renderAll(); setSync('ok');
+}
+function findLegacy(){
+  /* 旧版键：wb_oc_<旧昵称或guest>_ocs；跳过当前账号自己的键 */
+  let best = null;
+  for (let i = 0; i < localStorage.length; i++){
+    const k = localStorage.key(i) || '';
+    const m = /^wb_oc_(.*)_ocs$/.exec(k);
+    if (!m || m[1] === USER) continue;
+    let arr = null;
+    try { arr = JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){}
+    if (!Array.isArray(arr) || !arr.length) continue;
+    if (best && arr.length <= best.ocs.length) continue;
+    const p = 'wb_oc_' + m[1] + '_';
+    const g = kk => { try { return JSON.parse(localStorage.getItem(p + kk) || 'null'); } catch(e){ return null; } };
+    best = { ocs: arr, worlds: g('worlds') || [], order: g('order') || [], worldOrder: g('worldOrder') || [] };
+  }
+  return best;
+}
+async function onSubmitAuth(e){
+  e.preventDefault();
+  const g = el('authGate');
+  const setup = !!g._setup;
+  const u = el('agUser').value.trim(), p = el('agPass').value, p2 = el('agPass2').value;
+  el('agErr').textContent = '';
+  if (!u || !p){ el('agErr').textContent = '用户名和密码都要填'; return; }
+  if (setup && p !== p2){ el('agErr').textContent = '两次输入的密码不一致'; return; }
+  el('agGo').disabled = true; el('agGo').textContent = '请稍候…';
+  try {
+    const r = await fetch(setup ? '/api/oc/bootstrap' : '/api/oc/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok){
+      el('agErr').textContent = j.error || ('失败（HTTP ' + r.status + '）');
+      if (r.status === 409){
+        g._setup = false; el('agPass2').style.display = 'none';
+        el('agGo').textContent = '登录'; el('agTip').textContent = '';
+      }
+      return;
+    }
+    localStorage.setItem(TOKEN_KEY, j.token);
+    await enter(j.username);
+  } catch(err){ el('agErr').textContent = '网络错误：' + err.message; }
+  finally { el('agGo').disabled = false; }
+}
+async function logout(){
+  if (!confirm('登出？本地数据保留，重新登录后从云端恢复。')) return;
+  try { await fetch('/api/oc/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token() } }); } catch(e){}
+  localStorage.removeItem(TOKEN_KEY);
+  location.reload();
+}
+function hexA(hex, a){
+  const h = String(hex||'').replace('#',''); const v = h.length===3 ? h.split('').map(c=>c+c).join('') : h;
+  const n = parseInt(v,16) || 0; return 'rgba(' + ((n>>16)&255) + ',' + ((n>>8)&255) + ',' + (n&255) + ',' + a + ')';
+}
+function drawRadar(ctx, cx, cy, R, six, color){
+  ctx.clearRect(0,0,10000,10000);
+  const n = SIX_KEYS.length;
+  for (let ring=1; ring<=4; ring++){
+    ctx.beginPath();
+    for (let i=0;i<n;i++){ const a = -Math.PI/2 + i*2*Math.PI/n; const r = R*ring/4;
+      const x = cx + r*Math.cos(a), y = cy + r*Math.sin(a); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+    ctx.closePath(); ctx.strokeStyle = 'rgba(255,255,255,.10)'; ctx.stroke();
+  }
+  ctx.beginPath();
+  for (let i=0;i<n;i++){ const a = -Math.PI/2 + i*2*Math.PI/n; const val = Math.max(0,Math.min(10, six[SIX_KEYS[i]]||0));
+    const r = R*val/10; const x = cx + r*Math.cos(a), y = cy + r*Math.sin(a); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+  ctx.closePath(); ctx.fillStyle = hexA(color||'#c04a36', .35); ctx.fill();
+  ctx.strokeStyle = color||'#c04a36'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+  for (let i=0;i<n;i++){ const a = -Math.PI/2 + i*2*Math.PI/n; const x = cx + (R+16)*Math.cos(a), y = cy + (R+16)*Math.sin(a)+4;
+    ctx.fillText(SIX_KEYS[i], x, y); }
+}
+function wrapText(ctx, text, x, y, maxW, lh){
+  const chars = String(text||'').split(''); let line = '', yy = y;
+  chars.forEach(ch => { const tt = line + ch; if (ctx.measureText(tt).width > maxW && line){ ctx.fillText(line, x, yy); line = ch; yy += lh; } else line = tt; });
+  if (line) ctx.fillText(line, x, yy); return yy;
+}
+function drawOcCard(canvas, oc){
+  if (!oc) return; const ctx = canvas.getContext('2d'); const W = canvas.width, H = canvas.height;
+  const g = ctx.createLinearGradient(0,0,W,H);
+  g.addColorStop(0, '#101018'); g.addColorStop(1, '#1c1424');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  const col = oc.color || '#c04a36';
+  ctx.fillStyle = col; ctx.fillRect(0, 0, W, 14);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 62px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText(oc.name || '未命名', 64, 130);
+  ctx.font = '26px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.65)';
+  const w = worldById(oc.worldId);
+  ctx.fillText((oc.archetype||'') + (w?('  ·  '+w.name.split('（')[0]):''), 64, 172);
+  drawRadar(ctx, 200, 400, 150, oc.six||{}, col);
+  ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.font = '24px sans-serif';
+  let y = wrapText(ctx, '特质：' + (oc.trait||'—'), 420, 300, 600, 34);
+  y = wrapText(ctx, '出身：' + (oc.origin||'—'), 420, y+10, 600, 34);
+  y = wrapText(ctx, (oc.quotes && oc.quotes[0]) ? ('「' + oc.quotes[0] + '」') : '', 420, y+20, 600, 34);
+  ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.font = '20px sans-serif';
+  ctx.fillText('THE REGOLITH JAR · OC 小工具', 64, H - 46);
+}
+function exportOcGrid(oc){
+  if (!oc) return; const src = document.createElement('canvas'); src.width = 1080; src.height = 1080;
+  drawOcCard(src, oc);
+  const jobs = [];
+  for (let r=0;r<3;r++) for (let c=0;c<3;c++){
+    const piece = document.createElement('canvas'); piece.width = 360; piece.height = 360;
+    piece.getContext('2d').drawImage(src, c*360, r*360, 360, 360, 0, 0, 360, 360);
+    jobs.push({ url: piece.toDataURL('image/png'), name: (oc.name||'oc') + '_' + r + c + '.png' });
+  }
+  /* 逐张下载、间隔 350ms：移动端连点 9 个下载会被浏览器拦截（往往只成功第一张） */
+  jobs.forEach((j, i) => setTimeout(() => downloadDataUrl(j.url, j.name), i * 350));
+}
+
+const factionById = id => factions.find(f => f.id === id);
+const ocFaction = o => factionById(o && o.factionId);
+const FACTION_SEED_KEY = () => PREFIX() + 'factionSeeded';
+function seedFactions(){
+  if (factions.length || !ocs.length) return;
+  try { if (localStorage.getItem(FACTION_SEED_KEY())) return; } catch(e){}
+  const defs = [
+    ['完人之门', '供奉未型 / Eidos。下属真理堂、太阳圣殿。', '#7aa2f7'],
+    ['全能之门', '供奉无限（Ótakmarkað）。下属三一教、全真教。', '#bb9af7'],
+    ['未知信仰', '供奉 Ω。小早川玲央一线。', '#7dcfff'],
+    ['壹祖', '供奉壹祖（遗祖）。下属真一教、归心教。', '#e0af68'],
+    ['势宗', '供奉 Euthanasie。下属长生功、超越教。', '#f7768e']
+  ];
+  factions = defs.map(d => ({ id: t(), name: d[0], desc: d[1], color: d[2] }));
+  const rule = [
+    [/三一教|全真教|全能之门/, '全能之门'],
+    [/真理堂|太阳圣殿|完人之门/, '完人之门'],
+    [/真一教|归心教|壹祖/, '壹祖'],
+    [/长生功|超越教|势宗/, '势宗'],
+    [/小早川|Ω|未知信仰/, '未知信仰']
+  ];
+  ocs.forEach(o => {
+    if (o.factionId) return;
+    const txt = (o.archetype || '') + ' ' + (o.background || '');
+    for (const pair of rule){
+      if (pair[0].test(txt)){ const f = factions.find(x => x.name === pair[1]); if (f) o.factionId = f.id; break; }
+    }
+  });
+  save('factions', factions); save('ocs', ocs);
+  try { localStorage.setItem(FACTION_SEED_KEY(), '1'); } catch(e){}
+}
+function renderFactionList(){
+  const box = el('factionList'); if (!box) return;
+  if (!factions.length){ box.innerHTML = '<div class="empty">还没有势力。点「+ 新建势力」开始。</div>'; return; }
+  box.innerHTML = factions.map(f => {
+    const n = ocs.filter(o => o.factionId === f.id).length;
+    return '<div class="ccard' + (f.id===curFactionId?' sel':'') + '" data-fid="' + f.id + '">'
+      + '<span class="bar" style="background:' + (f.color||'var(--accent)') + '"></span>'
+      + '<div class="nm">' + escapeHtml(f.name) + '</div>'
+      + '<div class="ar">' + n + ' 人</div></div>';
+  }).join('');
+  box.querySelectorAll('[data-fid]').forEach(c => c.addEventListener('click', () => {
+    curFactionId = c.dataset.fid; renderFactionList(); renderFactionEditor(curFactionId);
+  }));
+}
+function renderFactionEditor(id){
+  const box = el('factionEditor'); if (!box) return;
+  const f = factionById(id);
+  if (!f){ box.innerHTML = '<div class="empty">选中一个势力进行编辑。</div>'; return; }
+  const members = ocs.filter(o => o.factionId === f.id);
+  const others = ocs.filter(o => o.factionId !== f.id);
+  const chipStyle = 'display:inline-block;padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.09);font-size:12px;margin:0 5px 5px 0;cursor:pointer';
+  box.innerHTML =
+      '<div class="fld"><label>名字</label><input id="fa_name" value="' + escapeHtml(f.name) + '"></div>'
+    + '<div class="fld"><label>说明</label><textarea id="fa_desc" rows="3">' + escapeHtml(f.desc||'') + '</textarea></div>'
+    + '<div class="fld"><label>代表色</label><input type="color" id="fa_color" value="' + (f.color||'#c04a36') + '"></div>'
+    + '<div class="fld"><label>成员（' + members.length + '）</label><div>'
+    + (members.length ? members.map(o => '<span style="' + chipStyle + '" data-rm="' + o.id + '">' + escapeHtml(o.name) + ' ✕</span>').join('')
+                      : '<span style="color:var(--text-2);font-size:12px">还没有成员</span>')
+    + '</div></div>'
+    + '<div class="fld"><label>加入成员</label><div style="display:flex;gap:8px">'
+    + '<select id="fa_add" style="flex:1"><option value="">— 选择角色 —</option>'
+    + others.map(o => '<option value="' + o.id + '">' + escapeHtml(o.name) + '</option>').join('')
+    + '</select><button class="btn ghost sm" id="fa_addBtn">加入</button></div></div>'
+    + '<div class="toolbar"><button class="btn ghost sm" id="fa_del">删除势力</button></div>';
+  el('fa_name').addEventListener('input', () => { f.name = el('fa_name').value; save('factions', factions); renderFactionList(); renderOcList(); });
+  el('fa_desc').addEventListener('input', () => { f.desc = el('fa_desc').value; save('factions', factions); });
+  el('fa_color').addEventListener('input', () => { f.color = el('fa_color').value; save('factions', factions); renderFactionList(); });
+  box.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => {
+    const o = ocById(b.dataset.rm); if (o){ delete o.factionId; save('ocs', ocs); }
+    renderFactionList(); renderFactionEditor(f.id); renderOcList(); renderOcEditor(curOcId);
+  }));
+  el('fa_addBtn').addEventListener('click', () => {
+    const o = ocById(el('fa_add').value); if (!o) return;
+    o.factionId = f.id; save('ocs', ocs);
+    renderFactionList(); renderFactionEditor(f.id); renderOcList(); renderOcEditor(curOcId);
+  });
+  el('fa_del').addEventListener('click', () => {
+    if (!confirm('删除势力「' + f.name + '」？角色会变成无势力。')) return;
+    factions = factions.filter(x => x.id !== f.id);
+    ocs.forEach(o => { if (o.factionId === f.id) delete o.factionId; });
+    save('factions', factions); save('ocs', ocs); curFactionId = null;
+    renderFactionList(); renderFactionEditor(null); renderOcList(); renderOcEditor(curOcId);
+  });
+}
+function renderAll(){ seedFactions(); renderOcList(); renderOcEditor(curOcId); renderOcGraph(); renderOcCheck(); renderOcExport(); renderOcWorlds(); renderOcWorldEditor(curWorldId); renderFactionList(); renderFactionEditor(curFactionId); renderMap(); }
+function init(){
+  bindMapControls();
+  el('jump').querySelectorAll('a').forEach(a => a.addEventListener('click', e => {
+    e.preventDefault(); const t = el(a.dataset.t); if (t) t.scrollIntoView({ behavior:'smooth', block:'start' });
+  }));
+  // 导航当前节高亮：页面长，滑动时指出所在节（替代原来只有 hover 才反馈）
+  (function(){
+    const links = Array.prototype.slice.call(el('jump').querySelectorAll('a'));
+    const secs = links.map(a => el(a.dataset.t)).filter(Boolean);
+    if (!('IntersectionObserver' in window) || !secs.length) return;
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(en => {
+        if (!en.isIntersecting) return;
+        const i = secs.indexOf(en.target);
+        links.forEach((a, j) => a.classList.toggle('on', j === i));
+      });
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    secs.forEach(s => io.observe(s));
+  })();
+  el('ocNewBtn').addEventListener('click', () => {
+    const oc = { id:t(), name:'新角色', archetype:'', worldId: worlds[0] && worlds[0].id, age:'', origin:'', hobby:'', color:'', six:{}, trait:'', hook:'', background:'', quotes:[], relations:[], palette:[] };
+    ocs.push(oc); save('ocs', ocs); curOcId = oc.id;
+    renderOcList(); renderOcEditor(curOcId); renderOcGraph(); renderOcCheck(); renderOcExport();
+    el('sec-archive').scrollIntoView({ behavior:'smooth' });
+  });
+  el('factionNew').addEventListener('click', () => {
+    const f = { id:t(), name:'新势力', desc:'', color: OC_PALETTE[factions.length % OC_PALETTE.length] };
+    factions.push(f); save('factions', factions); curFactionId = f.id;
+    renderFactionList(); renderFactionEditor(curFactionId);
+  });
+  el('ocWorldNew').addEventListener('click', () => {
+    const w = { id:t(), name:'新世界', desc:'', color:OC_PALETTE[worlds.length%OC_PALETTE.length], chronicle:'' };
+    worlds.push(w); save('worlds', worlds); curWorldId = w.id; renderOcWorlds(); renderOcWorldEditor(curWorldId);
+  });
+  el('ocPngBtn').addEventListener('click', () => {
+    const oc = ocById(el('ocExportSel').value); if (!oc) return;
+    const cvs = el('ocCardCanvas'); drawOcCard(cvs, oc); downloadDataUrl(cvs.toDataURL('image/png'), (oc.name||'oc') + '.png');
+  });
+  el('ocGridBtn').addEventListener('click', () => { const oc = ocById(el('ocExportSel').value); if (oc) exportOcGrid(oc); });
+  el('ocExportSel').addEventListener('change', () => { const oc = ocById(el('ocExportSel').value); if (oc) drawOcCard(el('ocCardCanvas'), oc); });
+  el('cloudBtn').addEventListener('click', async () => {
+    let st = null; try { st = await (await fetch('/api/oc/status')).json(); } catch(e){}
+    showGate('', !!(st && st.needsBootstrap));
+  });
+  el('agSkip').addEventListener('click', () => enterGuest(null));
+  el('aiBtn').addEventListener('click', () => { const p = el('aiPanel'); p.style.display = (p.style.display === 'none' ? '' : 'none'); });
+  el('aiCfgBtn').addEventListener('click', () => { const c = el('aiCfg'); c.style.display = (c.style.display === 'none' ? '' : 'none'); if (c.style.display !== 'none') aiCfgFill(); });
+  el('aiParseBtn').addEventListener('click', aiParse);
+  el('aiImgs').addEventListener('change', () => { const f = Array.from(el('aiImgs').files || []); el('aiImgNames').textContent = f.length ? f.map(x => x.name).join('、') : ''; });
+  ['aiBase','aiModel','aiKey'].forEach(id => el(id).addEventListener('change', aiCfgSave));
+  el('dlJsonBtn').addEventListener('click', dlJson);
+  el('dlTxtBtn').addEventListener('click', dlTxt);
+  el('sortHint').addEventListener('click', () => toast('按住卡片拖动即可排序'));
+  el('logoutBtn').addEventListener('click', logout);
+  el('syncDot').addEventListener('click', () => { if (el('syncDot').classList.contains('err')) pushData(); });
+  el('agForm').addEventListener('submit', onSubmitAuth);
+  boot();
+  initGlow();
+}
+
+function initGlow(){
+  /* 触屏没有鼠标光标，光晕追随毫无意义；且 tap 也会派发 mousemove，
+     不拦的话点一下屏幕就常驻一个 520px 光晕（触屏没有 mouseleave 消掉它） */
+  if (window.matchMedia('(pointer: coarse)').matches) return;
+  const g = el('glow');
+  window.addEventListener('mousemove', e => { g.style.opacity = 1; g.style.left = e.clientX + 'px'; g.style.top = e.clientY + 'px'; });
+  document.addEventListener('mouseleave', () => { g.style.opacity = 0; });
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+})();
+</script>
+</body>
+</html>

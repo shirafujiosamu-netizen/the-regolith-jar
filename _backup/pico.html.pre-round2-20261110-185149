@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pico RamOS · THE REGOLITH JAR</title>
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
+<link rel="stylesheet" href="/works/detail.css">
+</head>
+<body>
+<nav class="top"><div class="wrap"><span class="brand">THE REGOLITH JAR</span><a class="back" href="/">回到首页</a></div></nav>
+<main><div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">作品 / 01</div>
+    <h1>Pico RamOS</h1>
+    <div class="cap">桌面卡片系统 / Electron</div>
+  </section>
+
+  <section class="block">
+    <div class="eyebrow">关于</div>
+    <h2>把 Windows 桌面拆成一张张卡片。不是换壁纸，是把窗口、快捷方式、便签、状态都收进同一个网格里管。</h2>
+    <p>所有组件以 1U 为单位，1U 等于屏宽的五十分之一。卡片尺寸只允许七种比例，不随手拖大小，所以三页场景怎么切排版都是齐的。</p>
+    <p>一直按自己平时用电脑的方式在改。原生任务栏、快捷方式读取、窗口拖放、输入法、休眠唤醒，都是真机上碰过问题再补的。</p>
+    <ul class="facts">
+      <li><b>网格</b>：1U = 屏宽 / 50；比例白名单 1:1、1:2、2:1、2:3、3:2、1:4、4:5</li>
+      <li><b>场景</b>：办公 / 游戏 / 桌面三页，页码条在 dock 下方，滚轮与方向键都能换页</li>
+      <li><b>原生衔接</b>：读取 Windows 快捷方式与图标，dock 命中层、工作区恢复、任务栏显隐</li>
+      <li><b>卡片</b>：文件夹、邮件、B 站、时钟天气、系统监控、待办、桌宠，玻璃材质三档</li>
+      <li><b>实现</b>：Electron 33；配置原子写 + 备份轮转；数据只留本机</li>
+    </ul>
+
+    <figure class="shot"><img src="/images/portfolio/pros-desktop.jpg" alt="Pico RamOS 桌面：玻璃卡片、dock 与页码条"><figcaption>Pico RamOS 桌面：玻璃卡片、dock 与页码条</figcaption></figure>
+  </section>
+
+  <div class="pager">
+    <a href="/intro.html">← THE REGOLITH JAR</a>
+    <a href="/works/xiang.html">巷 →</a>
+  </div>
+
+</div></main>
+</body>
+</html>

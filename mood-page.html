@@ -1,0 +1,2017 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>情绪关怀舱</title>
+    <!-- 引入 Chart.js 用于图表 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- 引入 html2canvas 用于导出图片 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- 引入 Sortable 实现卡片拖动排序 -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <style>
+        /* 复用之前的CSS变量 */
+        :root {
+            --bg-app: #ffffff;
+            --bg-tools: #f5f7fa;
+            --bg-card: white;
+            --text-primary: #1e2a3a;
+            --text-secondary: #4a5a6e;
+            --border-light: #dce1e8;
+            --border-card: #e6eaef;
+            --accent: #1e2a3a;
+            --accent-hover: #2c3e50;
+            --msg-bg: #f8fafc;
+            --btn-bg: #f0f2f5;
+            --btn-border: #d0d7de;
+            --btn-hover: #e2e6ec;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --body-bg: #e9eef2;
+        }
+
+        body.theme-dark {
+            --bg-app: #1a1a1a;
+            --bg-tools: #2a2a2a;
+            --bg-card: #333333;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border-light: #4a4a4a;
+            --border-card: #5a5a5a;
+            --accent: #808080;
+            --accent-hover: #a0a0a0;
+            --msg-bg: #2a2a2a;
+            --btn-bg: #333333;
+            --btn-border: #4a4a4a;
+            --btn-hover: #404040;
+            --shadow: rgba(128, 128, 128, 0.3);
+            --body-bg: #0a0a0a;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: var(--font-family);
+            background-color: var(--body-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .mood-container {
+            max-width: 1400px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 24px;
+            padding: 20px;
+            box-shadow: 0 8px 20px var(--shadow);
+            border: 1px solid var(--border-card);
+            backdrop-filter: blur(4px);
+            transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            cursor: grab;
+        }
+
+        .card:active {
+            cursor: grabbing;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 2px solid var(--border-light);
+            padding-bottom: 10px;
+            cursor: grab;
+        }
+
+        .card-title:active {
+            cursor: grabbing;
+        }
+
+        /* 情绪速记 */
+        .mood-emojis {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+
+        .mood-emoji {
+            font-size: 32px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            background: var(--btn-bg);
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mood-emoji:hover {
+            transform: scale(1.1);
+            border-color: var(--accent);
+        }
+
+        .mood-emoji.selected {
+            border-color: var(--accent);
+            background: var(--accent-hover);
+        }
+
+        .mood-note {
+            width: 100%;
+            padding: 10px;
+            border-radius: 30px;
+            border: 1px solid var(--border-light);
+            background: var(--bg-tools);
+            color: var(--text-primary);
+            font-family: inherit;
+            margin: 8px 0;
+            box-sizing: border-box;
+        }
+
+        .history-list {
+            max-height: 150px;
+            overflow-y: auto;
+            background: var(--msg-bg);
+            border-radius: 16px;
+            padding: 8px;
+            font-size: 13px;
+            margin-top: 10px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--text-secondary) var(--msg-bg);
+        }
+
+        .history-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .history-list::-webkit-scrollbar-track {
+            background: var(--msg-bg);
+            border-radius: 10px;
+        }
+        .history-list::-webkit-scrollbar-thumb {
+            background: var(--text-secondary);
+            border-radius: 10px;
+        }
+
+        .history-item {
+            padding: 4px 0;
+            border-bottom: 1px dashed var(--border-light);
+            display: flex;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .history-btn {
+            background: none;
+            border: none;
+            color: var(--accent);
+            cursor: pointer;
+            font-size: 13px;
+            text-decoration: underline;
+            margin-top: 5px;
+            align-self: flex-end;
+        }
+
+        /* 情绪日历图表 */
+        .chart-container {
+            width: 100%;
+            height: 200px;
+            margin: 10px 0;
+        }
+
+        /* 呼吸练习 */
+        .breath-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .breath-circle {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: var(--accent);
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            transition: transform 0.1s linear;
+        }
+
+        .breath-timer {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 10px 0;
+            color: var(--text-primary);
+        }
+
+        .breath-mode-select {
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 30px;
+            background: var(--btn-bg);
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+        }
+
+        .breath-controls {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: var(--btn-bg);
+            border: 1px solid var(--btn-border);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: inherit;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: var(--btn-hover);
+        }
+
+        button.primary {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        button.primary:hover {
+            background: var(--accent-hover);
+        }
+
+        /* 全屏冥想 */
+        .fullscreen-meditation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fullscreen-meditation .breath-circle {
+            width: 300px;
+            height: 300px;
+            font-size: 40px;
+        }
+
+        .fullscreen-meditation .breath-timer {
+            font-size: 32px;
+            color: white;
+            margin: 20px;
+        }
+
+        .fullscreen-close {
+            position: absolute;
+            top: 40px;
+            right: 40px;
+            background: white;
+            color: black;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        /* 白噪音 */
+        .noise-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 10px 0;
+            padding: 8px;
+            background: var(--msg-bg);
+            border-radius: 40px;
+            font-size: 13px;
+        }
+
+        .noise-icon {
+            font-size: 20px;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .noise-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .noise-name {
+            font-weight: 600;
+        }
+
+        .noise-author {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .noise-switch {
+            width: 44px;
+            height: 22px;
+            background: var(--border-light);
+            border-radius: 30px;
+            position: relative;
+            cursor: pointer;
+            transition: 0.2s;
+            flex-shrink: 0;
+        }
+
+        .noise-switch.active {
+            background: var(--accent);
+        }
+
+        .noise-switch::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: 0.2s;
+        }
+
+        .noise-switch.active::after {
+            left: 24px;
+        }
+
+        .noise-volume {
+            width: 70px;
+            margin-left: 5px;
+        }
+
+        .source-credit {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-align: right;
+            margin-top: 8px;
+        }
+
+        /* 解压小游戏 */
+        #gameCanvas {
+            width: 100%;
+            height: 200px;
+            background: var(--msg-bg);
+            border-radius: 20px;
+            margin: 10px 0;
+            cursor: pointer;
+            touch-action: none;
+        }
+        .game-score {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 5px 0;
+        }
+
+        /* 每日微挑战 */
+        .activity-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .preset-tag {
+            background: var(--btn-bg);
+            border: 1px solid var(--border-light);
+            border-radius: 30px;
+            padding: 4px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .preset-tag:hover {
+            background: var(--btn-hover);
+        }
+
+        .activity-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--text-secondary) var(--msg-bg);
+        }
+        .activity-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .activity-list::-webkit-scrollbar-track {
+            background: var(--msg-bg);
+            border-radius: 10px;
+        }
+        .activity-list::-webkit-scrollbar-thumb {
+            background: var(--text-secondary);
+            border-radius: 10px;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 0;
+            padding: 6px 10px;
+            background: var(--msg-bg);
+            border-radius: 40px;
+        }
+
+        .activity-name {
+            flex: 2;
+            font-weight: 500;
+        }
+
+        .activity-value {
+            width: 60px;
+            padding: 4px;
+            border-radius: 20px;
+            border: 1px solid var(--border-light);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        .activity-unit {
+            width: 50px;
+            padding: 4px;
+            border-radius: 20px;
+            border: 1px solid var(--border-light);
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .remove-activity {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0 5px;
+        }
+
+        .add-custom {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .add-custom input {
+            flex: 1;
+            padding: 8px;
+            border-radius: 30px;
+            border: 1px solid var(--border-light);
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        /* 一周成就 */
+        .achievement-stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 15px 0;
+            padding: 10px;
+            background: var(--msg-bg);
+            border-radius: 30px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* 导出按钮 */
+        .export-btn {
+            margin-top: 10px;
+        }
+
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 20000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: 30px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--text-secondary) var(--bg-card);
+        }
+        .modal-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        .modal-content::-webkit-scrollbar-track {
+            background: var(--bg-card);
+            border-radius: 10px;
+        }
+        .modal-content::-webkit-scrollbar-thumb {
+            background: var(--text-secondary);
+            border-radius: 10px;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 20px;
+        }
+
+        .modal-close {
+            float: right;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        /* 底部语录 */
+        .mini-quote {
+            background: var(--msg-bg);
+            border-radius: 30px;
+            padding: 12px;
+            margin-top: 15px;
+            font-size: 14px;
+            font-style: italic;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        /* 免责声明弹窗 */
+        .disclaimer-modal {
+            display: flex;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 30000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .disclaimer-content {
+            background: var(--bg-card);
+            border-radius: 30px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            scrollbar-width: thin;
+            scrollbar-color: var(--text-secondary) var(--bg-card);
+        }
+        .disclaimer-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        .disclaimer-content::-webkit-scrollbar-track {
+            background: var(--bg-card);
+            border-radius: 10px;
+        }
+        .disclaimer-content::-webkit-scrollbar-thumb {
+            background: var(--text-secondary);
+            border-radius: 10px;
+        }
+
+        .disclaimer-content h2 {
+            color: var(--accent);
+            margin-bottom: 20px;
+            font-size: 22px;
+        }
+
+        .disclaimer-content h3 {
+            margin: 20px 0 10px;
+            font-size: 16px;
+        }
+
+        .disclaimer-content p {
+            margin: 10px 0;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        .disclaimer-content .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .disclaimer-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            margin-top: 25px;
+        }
+
+        .disclaimer-buttons button {
+            padding: 12px 24px;
+            font-size: 16px;
+        }
+
+        /* 多语言学习卡片 */
+        .language-selector {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .lang-tag {
+            background: var(--btn-bg);
+            border: 1px solid var(--border-light);
+            border-radius: 30px;
+            padding: 6px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .lang-tag.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .word-card {
+            background: var(--msg-bg);
+            border-radius: 30px;
+            padding: 25px;
+            margin: 15px 0;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .word-card:hover {
+            transform: scale(1.02);
+        }
+
+        .word-target {
+            font-size: 36px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--accent);
+        }
+
+        .word-translation {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin: 10px 0;
+            opacity: 0.8;
+        }
+
+        .word-example {
+            font-size: 14px;
+            font-style: italic;
+            color: var(--text-secondary);
+            margin-top: 10px;
+        }
+
+        .word-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        .progress-stats {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        /* 心理疏导 - 可交互 */
+        .soothing-item {
+            background: var(--msg-bg);
+            border-radius: 20px;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .soothing-item:hover {
+            background: var(--btn-hover);
+        }
+
+        .soothing-title {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .soothing-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        .soothing-check {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid var(--accent);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            background: transparent;
+        }
+
+        .soothing-check.checked {
+            background: var(--accent);
+        }
+
+        .soothing-check.checked::after {
+            content: "✓";
+        }
+
+        .soothing-note {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-left: 10px;
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* 清空按钮 */
+        .clear-btn {
+            background: none;
+            border: 1px solid var(--border-light);
+            color: var(--text-secondary);
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            margin-left: 8px;
+            cursor: pointer;
+        }
+        .clear-btn:hover {
+            background: var(--btn-hover);
+        }
+    </style>
+</head>
+<body>
+    <!-- 免责声明弹窗（测试模式下每次刷新都显示） -->
+    <div id="disclaimerModal" class="disclaimer-modal">
+        <div class="disclaimer-content">
+            <h2>使用前请知悉</h2>
+            
+            <div class="warning">
+                <strong>⚠️ 重要提醒</strong>
+                <p>本应用为情绪陪伴与自我关怀工具，<strong>不提供任何形式的心理咨询、心理治疗或医疗服务</strong>，不能替代专业医疗建议、诊断或治疗。</p>
+            </div>
+
+            <h3>📋 请知悉</h3>
+            <p>1. 本应用所有功能（包括但不限于情绪记录、呼吸练习、白噪音、多语言学习等）仅用于提供情绪支持和自我关怀体验，不具备诊断、治疗或预防任何心理疾病的功能。</p>
+            <p>2. 应用中的内容、建议或提示均基于通用心理健康知识，不代表专业医疗意见。个体效果可能存在差异，不一定适合所有人。</p>
+            <p>3. 您理解并同意，使用本应用所产生的任何后果由您自行承担。开发者不对因使用本应用而导致的任何直接或间接损失承担责任。</p>
+            <p>4. 本应用严格遵守《人工智能拟人化互动服务管理暂行办法》等相关法规，不会利用用户心理脆弱状态诱导用户作出不合理决策，不会生成鼓励自杀自残的内容。</p>
+
+            <h3>🆘 需要专业帮助？</h3>
+            <p>如果您正在经历严重的心理困扰、有自杀念头或需要紧急帮助，请立即联系专业机构：</p>
+            <p><strong>全国心理援助热线：</strong> 400-161-9995（24小时）</p>
+            <p><strong>希望24热线：</strong> 400-161-9995（24小时）</p>
+            <p><strong>北京心理危机研究与干预中心：</strong> 010-82951332</p>
+            <p><strong>上海心理援助热线：</strong> 021-12320-5</p>
+            <p><strong>广州心理援助热线：</strong> 020-81899120</p>
+            <p><strong>深圳心理援助热线：</strong> 0755-25629459</p>
+            <p><strong>江苏省心理援助热线：</strong> 025-83712977</p>
+            <p><strong>浙江省心理援助热线：</strong> 0571-85029595</p>
+            <p><strong>四川省心理援助热线：</strong> 028-87577510</p>
+            <p><strong>云南省心理援助热线：</strong> 0871-12320-5</p>
+            <p><strong>贵州省心理援助热线：</strong> 0851-88417039</p>
+            <p>紧急情况请直接拨打：<strong>110</strong> 或 <strong>120</strong> 或当地紧急服务</p>
+
+            <h3>🔒 隐私说明</h3>
+            <p>所有记录数据均保存在您的设备本地，不会上传至任何服务器。您可以随时删除数据。</p>
+
+            <div class="disclaimer-buttons">
+                <button id="disclaimerDecline">不同意并退出</button>
+                <button id="disclaimerAccept" class="primary">我理解并同意</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="mood-container" id="moodContainer">
+        <!-- 卡片1：情绪速记 -->
+        <div class="card" data-card-id="mood">
+            <div class="card-title">
+                <span>😊 情绪速记</span>
+                <button class="clear-btn" id="clearTodayMood">清空今日</button>
+            </div>
+            <div class="mood-emojis">
+                <span class="mood-emoji" data-mood="😊">😊</span>
+                <span class="mood-emoji" data-mood="🥰">🥰</span>
+                <span class="mood-emoji" data-mood="😌">😌</span>
+                <span class="mood-emoji" data-mood="😐">😐</span>
+                <span class="mood-emoji" data-mood="😕">😕</span>
+                <span class="mood-emoji" data-mood="😢">😢</span>
+                <span class="mood-emoji" data-mood="😤">😤</span>
+                <span class="mood-emoji" data-mood="😴">😴</span>
+                <span class="mood-emoji" data-mood="🤔">🤔</span>
+                <span class="mood-emoji" data-mood="🤯">🤯</span>
+                <span class="mood-emoji" data-mood="🥱">🥱</span>
+                <span class="mood-emoji" data-mood="😶‍🌫️">😶‍🌫️</span>
+            </div>
+            <input type="text" class="mood-note" id="moodNote" placeholder="写下此刻的想法（选填）...">
+            <button class="primary" id="saveMoodBtn">记录此刻</button>
+            <div class="history-list" id="moodHistory"></div>
+            <button class="history-btn" id="viewMoodHistoryBtn">📅 查看全部记录</button>
+            <!-- 情绪日历图表 -->
+            <div class="chart-container">
+                <canvas id="moodChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 卡片2：呼吸练习 -->
+        <div class="card" data-card-id="breath">
+            <div class="card-title">🌬️ 呼吸练习</div>
+            <div class="breath-container">
+                <div class="breath-circle" id="breathCircle">准备</div>
+                <div class="breath-timer" id="breathTimer">--:--</div>
+                <select id="breathMode" class="breath-mode-select">
+                    <option value="4-7-8">放松模式 (4-7-8)</option>
+                    <option value="4-4-4">平静模式 (4-4-4)</option>
+                    <option value="5-5-5">平衡模式 (5-5-5)</option>
+                </select>
+                <div class="breath-controls">
+                    <button id="startBreath">开始</button>
+                    <button id="stopBreath">停止</button>
+                    <button id="fullscreenBreath" class="primary">全屏冥想</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 卡片3：白噪音 -->
+        <div class="card" data-card-id="noise">
+            <div class="card-title">🎵 白噪音</div>
+            <div id="noiseList"></div>
+            <div class="source-credit">🌐 声音来源: <a href="https://freesound.org" target="_blank">freesound.org</a> (CC0)</div>
+        </div>
+
+        <!-- 卡片4：每日微挑战 -->
+        <div class="card" data-card-id="daily">
+            <div class="card-title">
+                <span>✅ 每日微挑战</span>
+                <button class="clear-btn" id="clearTodayActivities">清空今日</button>
+            </div>
+            <div class="activity-presets">
+                <span class="preset-tag" data-activity="冥想" data-unit="分钟">🧘 冥想</span>
+                <span class="preset-tag" data-activity="出门" data-unit="次">🚶 出门</span>
+                <span class="preset-tag" data-activity="晒太阳" data-unit="分钟">☀️ 晒太阳</span>
+                <span class="preset-tag" data-activity="和人交谈" data-unit="句">💬 和人交谈</span>
+                <span class="preset-tag" data-activity="阅读" data-unit="页">📖 阅读</span>
+                <span class="preset-tag" data-activity="写作" data-unit="字">✍️ 写作</span>
+                <span class="preset-tag" data-activity="运动" data-unit="分钟">🏃 运动</span>
+                <span class="preset-tag" data-activity="休息" data-unit="分钟">😴 休息</span>
+                <span class="preset-tag" data-activity="喝水" data-unit="杯">💧 喝水</span>
+            </div>
+            <div class="activity-list" id="activityList"></div>
+            <div class="add-custom">
+                <input type="text" id="customActivityName" placeholder="自定义活动名称">
+                <button id="addCustomActivity">添加</button>
+            </div>
+            <button class="primary" id="saveActivityBtn">保存今日</button>
+            <button class="history-btn" id="viewActivityHistoryBtn">📅 查看历史记录</button>
+
+            <div class="achievement-stats" id="achievementStats">
+                <div class="stat-item"><span class="stat-value" id="streakDays">0</span><span class="stat-label">连续天数</span></div>
+                <div class="stat-item"><span class="stat-value" id="totalWeek">0</span><span class="stat-label">本周完成</span></div>
+                <div class="stat-item"><span class="stat-value" id="totalAll">0</span><span class="stat-label">累计完成</span></div>
+            </div>
+
+            <!-- 解压小游戏 -->
+            <canvas id="gameCanvas" width="400" height="200"></canvas>
+            <div class="game-score">得分: <span id="gameScore">0</span></div>
+            <button id="resetGame">新游戏</button>
+
+            <!-- 心情日记导出 -->
+            <button class="export-btn" id="exportDiary">📤 导出日记 (文本)</button>
+            <button class="export-btn" id="exportImage">📸 导出截图</button>
+
+            <!-- 底部语录 -->
+            <div class="mini-quote" id="quoteBox"></div>
+        </div>
+
+        <!-- 卡片5：多语言学习（每日随机） -->
+        <div class="card" data-card-id="language">
+            <div class="card-title">📖 每日一语</div>
+            <div class="language-selector" id="languageSelector">
+                <span class="lang-tag active" data-lang="en">🇬🇧 英语</span>
+                <span class="lang-tag" data-lang="fr">🇫🇷 法语</span>
+                <span class="lang-tag" data-lang="ja">🇯🇵 日语</span>
+                <span class="lang-tag" data-lang="ko">🇰🇷 韩语</span>
+                <span class="lang-tag" data-lang="ru">🇷🇺 俄语</span>
+                <span class="lang-tag" data-lang="de">🇩🇪 德语</span>
+            </div>
+            <div class="word-card" id="wordCard">
+                <div class="word-target" id="wordTarget">Hello</div>
+                <div class="word-translation" id="wordTranslation">你好</div>
+                <div class="word-example" id="wordExample">"Hello, how are you?"</div>
+            </div>
+            <div class="word-controls">
+                <button id="prevWord">◀ 上一个</button>
+                <button id="nextWord" class="primary">下一个 ▶</button>
+            </div>
+            <div class="progress-stats" id="wordProgress">今日短语 1 / 10</div>
+            <p style="font-size:12px; color:var(--text-secondary); margin-top:8px;">每天自动更新，点击卡片翻看全部</p>
+        </div>
+
+        <!-- 卡片6：心理疏导（可交互） -->
+        <div class="card" data-card-id="soothing">
+            <div class="card-title">🫂 心理疏导</div>
+            <div class="soothing-item" id="selfHug">
+                <div>
+                    <div class="soothing-title">🤗 给自己一个拥抱</div>
+                    <div class="soothing-desc">双手交叉放在胸前，轻轻拍打</div>
+                </div>
+                <span class="soothing-check" id="hugCheck"></span>
+            </div>
+            <div class="soothing-item" id="grounding">
+                <div>
+                    <div class="soothing-title">🌍 5-4-3-2-1 grounding</div>
+                    <div class="soothing-desc" id="groundingDesc">点击记录你看到的、摸到的…</div>
+                </div>
+                <span class="soothing-check" id="groundingCheck"></span>
+            </div>
+            <div class="soothing-item" id="gratitude">
+                <div>
+                    <div class="soothing-title">✨ 三件好事练习</div>
+                    <div class="soothing-desc" id="gratitudeDesc">点击写下今天的三件好事</div>
+                </div>
+                <span class="soothing-check" id="gratitudeCheck"></span>
+            </div>
+            <div class="soothing-item" id="nature">
+                <div>
+                    <div class="soothing-title">🌱 自然观察</div>
+                    <div class="soothing-desc">观察窗外的一棵树、一朵云</div>
+                </div>
+                <span class="soothing-check" id="natureCheck"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 情绪历史模态框 -->
+    <div id="moodHistoryModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" id="closeMoodModal">&times;</span>
+            <h3>📅 所有情绪记录</h3>
+            <div id="fullMoodHistory"></div>
+        </div>
+    </div>
+
+    <!-- 活动历史模态框 -->
+    <div id="activityHistoryModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" id="closeActivityModal">&times;</span>
+            <h3>📅 每日活动记录</h3>
+            <div id="fullActivityHistory"></div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ==================== 全局变量 ====================
+            const STORAGE_KEYS = {
+                MOOD: 'moodRecords',
+                ACTIVITY_HISTORY: 'activityHistory',
+                CARD_ORDER: 'cardOrder',
+                DISCLAIMER_ACCEPTED: 'disclaimerAccepted',
+                SOOTHING: 'soothingRecords'
+            };
+
+            // 测试模式：每次刷新页面都显示免责声明（方便测试）
+            // 正式使用时请将 TEST_MODE 设为 false
+            const TEST_MODE = true;
+
+            // ---------- 音频列表（请根据实际文件修改）----------
+            const sounds = [
+                { file: 'piano-loop.wav', name: '钢琴循环 (降八度)', author: 'josefpres' },
+                { file: 'birdsong.wav', name: '花园鸟鸣', author: 'richwise' },
+                { file: 'summer-field.flac', name: '夏日田野', author: 'klankbeeld' },
+                { file: 'crickets.flac', name: '蟋蟀与鸟', author: 'klankbeeld' },
+                { file: 'rain-garden.wav', name: '傍晚雨声', author: 'jw_audio' }
+            ];
+
+            const audioPlayers = sounds.map(s => {
+                const audio = new Audio(`/audio/${s.file}`);
+                audio.loop = true;
+                audio.volume = 0.5;
+                return { ...s, audio, active: false };
+            });
+
+            // 渲染白噪音
+            function renderNoiseList() {
+                const noiseListDiv = document.getElementById('noiseList');
+                noiseListDiv.innerHTML = '';
+                audioPlayers.forEach((item, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'noise-item';
+                    div.innerHTML = `
+                        <span class="noise-icon">🔊</span>
+                        <div class="noise-info">
+                            <span class="noise-name">${item.name}</span>
+                            <span class="noise-author">${item.author}</span>
+                        </div>
+                        <div class="noise-switch" data-index="${index}"></div>
+                        <input type="range" min="0" max="1" step="0.1" value="0.5" class="noise-volume" data-index="${index}" disabled>
+                    `;
+                    noiseListDiv.appendChild(div);
+                });
+
+                document.querySelectorAll('.noise-switch').forEach(sw => {
+                    sw.addEventListener('click', (e) => {
+                        const idx = e.target.dataset.index;
+                        toggleNoise(idx);
+                    });
+                });
+
+                document.querySelectorAll('.noise-volume').forEach(v => {
+                    v.addEventListener('input', (e) => {
+                        const idx = e.target.dataset.index;
+                        const vol = e.target.value;
+                        audioPlayers[idx].audio.volume = vol;
+                    });
+                });
+            }
+
+            function toggleNoise(index) {
+                const item = audioPlayers[index];
+                const sw = document.querySelector(`.noise-switch[data-index="${index}"]`);
+                const vol = document.querySelector(`.noise-volume[data-index="${index}"]`);
+                if (item.active) {
+                    item.audio.pause();
+                    sw.classList.remove('active');
+                    vol.disabled = true;
+                } else {
+                    item.audio.play().catch(e => console.log('自动播放被阻止，请先点击页面任意位置'));
+                    sw.classList.add('active');
+                    vol.disabled = false;
+                }
+                item.active = !item.active;
+            }
+
+            renderNoiseList();
+
+            // ==================== 免责声明弹窗 ====================
+            const disclaimerModal = document.getElementById('disclaimerModal');
+            const acceptBtn = document.getElementById('disclaimerAccept');
+            const declineBtn = document.getElementById('disclaimerDecline');
+
+            // 测试模式：每次都显示；否则检查 localStorage
+            if (TEST_MODE) {
+                disclaimerModal.style.display = 'flex';
+            } else {
+                if (localStorage.getItem(STORAGE_KEYS.DISCLAIMER_ACCEPTED) === 'true') {
+                    disclaimerModal.style.display = 'none';
+                } else {
+                    disclaimerModal.style.display = 'flex';
+                }
+            }
+
+            acceptBtn.addEventListener('click', () => {
+                localStorage.setItem(STORAGE_KEYS.DISCLAIMER_ACCEPTED, 'true');
+                disclaimerModal.style.display = 'none';
+            });
+
+            declineBtn.addEventListener('click', () => {
+                alert('您已选择不同意使用条款，将退出本应用。');
+                document.body.innerHTML = '<div style="text-align:center; margin-top:50px;">您已退出应用，感谢访问。</div>';
+            });
+
+            // ==================== 音频上下文初始化（点击页面激活）====================
+            let audioCtx = null;
+            document.body.addEventListener('click', function initAudio() {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+            }, { once: true });
+
+            // ==================== 情绪速记 ====================
+            const moodEmojis = document.querySelectorAll('.mood-emoji');
+            const moodNote = document.getElementById('moodNote');
+            const saveMoodBtn = document.getElementById('saveMoodBtn');
+            const moodHistoryDiv = document.getElementById('moodHistory');
+            const viewMoodHistoryBtn = document.getElementById('viewMoodHistoryBtn');
+            const moodModal = document.getElementById('moodHistoryModal');
+            const closeMoodModal = document.getElementById('closeMoodModal');
+            const fullMoodHistory = document.getElementById('fullMoodHistory');
+            const clearTodayMoodBtn = document.getElementById('clearTodayMood');
+
+            let selectedMood = '😊';
+            let moodRecords = JSON.parse(localStorage.getItem(STORAGE_KEYS.MOOD)) || [];
+
+            function getTodayDateStr() {
+                const now = new Date();
+                return `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;
+            }
+
+            function renderMoodHistory(limit = 5) {
+                moodHistoryDiv.innerHTML = '';
+                if (moodRecords.length === 0) {
+                    moodHistoryDiv.innerHTML = '<div class="history-item">暂无记录</div>';
+                    return;
+                }
+                const recent = moodRecords.slice(-limit).reverse();
+                recent.forEach(record => {
+                    const div = document.createElement('div');
+                    div.className = 'history-item';
+                    div.innerHTML = `<span>${record.emoji}</span><span>${record.note || '无备注'}</span><span style="margin-left:auto; font-size:11px;">${record.date}</span>`;
+                    moodHistoryDiv.appendChild(div);
+                });
+            }
+
+            function renderFullMoodHistory() {
+                fullMoodHistory.innerHTML = '';
+                if (moodRecords.length === 0) {
+                    fullMoodHistory.innerHTML = '<p>暂无记录</p>';
+                    return;
+                }
+                const sorted = [...moodRecords].reverse();
+                sorted.forEach(record => {
+                    const div = document.createElement('div');
+                    div.className = 'history-item';
+                    div.innerHTML = `<span>${record.emoji}</span><span>${record.note || '无备注'}</span><span style="margin-left:auto;">${record.date}</span>`;
+                    fullMoodHistory.appendChild(div);
+                });
+            }
+
+            function clearTodayMood() {
+                const today = getTodayDateStr();
+                moodRecords = moodRecords.filter(r => !r.date.startsWith(today));
+                localStorage.setItem(STORAGE_KEYS.MOOD, JSON.stringify(moodRecords));
+                renderMoodHistory();
+                updateMoodChart();
+            }
+
+            moodEmojis.forEach(emoji => {
+                emoji.addEventListener('click', () => {
+                    moodEmojis.forEach(e => e.classList.remove('selected'));
+                    emoji.classList.add('selected');
+                    selectedMood = emoji.dataset.mood;
+                });
+            });
+            moodEmojis[0].classList.add('selected');
+
+            saveMoodBtn.addEventListener('click', () => {
+                const note = moodNote.value.trim();
+                const now = new Date();
+                const dateStr = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()} ${now.getHours()}:${now.getMinutes()}`;
+                moodRecords.push({
+                    emoji: selectedMood,
+                    note: note,
+                    date: dateStr,
+                    timestamp: now.getTime()
+                });
+                localStorage.setItem(STORAGE_KEYS.MOOD, JSON.stringify(moodRecords));
+                moodNote.value = '';
+                renderMoodHistory();
+                updateMoodChart();
+            });
+
+            clearTodayMoodBtn.addEventListener('click', clearTodayMood);
+
+            viewMoodHistoryBtn.addEventListener('click', () => {
+                renderFullMoodHistory();
+                moodModal.style.display = 'flex';
+            });
+
+            closeMoodModal.addEventListener('click', () => {
+                moodModal.style.display = 'none';
+            });
+
+            window.addEventListener('click', (e) => {
+                if (e.target === moodModal) moodModal.style.display = 'none';
+            });
+
+            renderMoodHistory();
+
+            // ==================== 情绪日历图表 ====================
+            const ctx = document.getElementById('moodChart').getContext('2d');
+            let moodChart;
+
+            function getMoodValue(emoji) {
+                const map = { '😊':2, '🥰':2, '😌':2, '😐':1, '😕':1, '😴':1, '🤔':1, '😢':0, '😤':0, '🤯':0, '🥱':1, '😶‍🌫️':1 };
+                return map[emoji] || 1;
+            }
+
+            function updateMoodChart() {
+                const last7Days = [];
+                const today = new Date();
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date(today);
+                    d.setDate(d.getDate() - i);
+                    const dateStr = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+                    const dayRecords = moodRecords.filter(r => r.date.startsWith(dateStr));
+                    let avg = 1;
+                    if (dayRecords.length > 0) {
+                        const sum = dayRecords.reduce((acc, r) => acc + getMoodValue(r.emoji), 0);
+                        avg = sum / dayRecords.length;
+                    }
+                    last7Days.push(avg);
+                }
+
+                if (moodChart) moodChart.destroy();
+                moodChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['6天前','5天前','4天前','3天前','前天','昨天','今天'],
+                        datasets: [{
+                            label: '平均情绪值 (0-2)',
+                            data: last7Days,
+                            backgroundColor: 'rgba(30,42,58,0.6)',
+                            borderColor: 'rgba(30,42,58,1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { y: { min: 0, max: 2 } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+            updateMoodChart();
+
+            // ==================== 呼吸练习 ====================
+            const breathCircle = document.getElementById('breathCircle');
+            const breathTimer = document.getElementById('breathTimer');
+            const startBtn = document.getElementById('startBreath');
+            const stopBtn = document.getElementById('stopBreath');
+            const fullscreenBtn = document.getElementById('fullscreenBreath');
+            const breathModeSelect = document.getElementById('breathMode');
+
+            let breathInterval = null;
+            let breathStartTime = null;
+            let phaseDurations = [4000, 7000, 8000];
+
+            function getPhaseDurationsFromMode(mode) {
+                if (mode === '4-7-8') return [4000, 7000, 8000];
+                if (mode === '4-4-4') return [4000, 4000, 4000];
+                if (mode === '5-5-5') return [5000, 5000, 5000];
+                return [4000, 7000, 8000];
+            }
+
+            function updateBreathDisplay() {
+                if (!breathStartTime) return;
+                const now = Date.now();
+                const totalCycle = phaseDurations.reduce((a,b) => a+b, 0);
+                const cycleTime = (now - breathStartTime) % totalCycle;
+                let phase;
+                if (cycleTime < phaseDurations[0]) {
+                    phase = 0;
+                } else if (cycleTime < phaseDurations[0] + phaseDurations[1]) {
+                    phase = 1;
+                } else {
+                    phase = 2;
+                }
+
+                const phaseText = ['吸气', '屏住', '呼气'][phase];
+                breathCircle.textContent = phaseText;
+
+                let scale;
+                if (phase === 0) {
+                    const progress = cycleTime / phaseDurations[0];
+                    scale = 1 + 0.3 * progress;
+                } else if (phase === 1) {
+                    scale = 1.3;
+                } else {
+                    const progress = (cycleTime - phaseDurations[0] - phaseDurations[1]) / phaseDurations[2];
+                    scale = 1.3 - 0.3 * progress;
+                }
+                breathCircle.style.transform = `scale(${scale})`;
+
+                const totalSec = Math.floor((now - breathStartTime) / 1000);
+                const mins = Math.floor(totalSec / 60);
+                const secs = totalSec % 60;
+                breathTimer.textContent = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+            }
+
+            function startBreathing() {
+                if (breathInterval) return;
+                phaseDurations = getPhaseDurationsFromMode(breathModeSelect.value);
+                breathStartTime = Date.now();
+                breathInterval = setInterval(updateBreathDisplay, 50);
+            }
+
+            function stopBreathing() {
+                if (breathInterval) {
+                    clearInterval(breathInterval);
+                    breathInterval = null;
+                }
+                breathCircle.style.transform = 'scale(1)';
+                breathCircle.textContent = '准备';
+                breathTimer.textContent = '--:--';
+                breathStartTime = null;
+            }
+
+            startBtn.addEventListener('click', startBreathing);
+            stopBtn.addEventListener('click', stopBreathing);
+
+            fullscreenBtn.addEventListener('click', () => {
+                const fsDiv = document.createElement('div');
+                fsDiv.className = 'fullscreen-meditation';
+                fsDiv.innerHTML = `
+                    <div class="breath-circle" id="fsCircle">准备</div>
+                    <div class="breath-timer" id="fsTimer">--:--</div>
+                    <button class="fullscreen-close">退出</button>
+                `;
+                document.body.appendChild(fsDiv);
+                const fsCircle = fsDiv.querySelector('#fsCircle');
+                const fsTimer = fsDiv.querySelector('#fsTimer');
+                const closeBtn = fsDiv.querySelector('.fullscreen-close');
+
+                const fsPhaseDurations = getPhaseDurationsFromMode(breathModeSelect.value);
+                const fsTotalCycle = fsPhaseDurations.reduce((a,b) => a+b, 0);
+                let fsStartTime = Date.now();
+                let fsInterval = setInterval(() => {
+                    const now = Date.now();
+                    const cycleTime = (now - fsStartTime) % fsTotalCycle;
+                    let phase;
+                    if (cycleTime < fsPhaseDurations[0]) phase = 0;
+                    else if (cycleTime < fsPhaseDurations[0] + fsPhaseDurations[1]) phase = 1;
+                    else phase = 2;
+
+                    fsCircle.textContent = ['吸气','屏住','呼气'][phase];
+                    let scale;
+                    if (phase === 0) {
+                        const progress = cycleTime / fsPhaseDurations[0];
+                        scale = 1 + 0.3 * progress;
+                    } else if (phase === 1) {
+                        scale = 1.3;
+                    } else {
+                        const progress = (cycleTime - fsPhaseDurations[0] - fsPhaseDurations[1]) / fsPhaseDurations[2];
+                        scale = 1.3 - 0.3 * progress;
+                    }
+                    fsCircle.style.transform = `scale(${scale})`;
+
+                    const totalSec = Math.floor((now - fsStartTime) / 1000);
+                    const mins = Math.floor(totalSec / 60);
+                    const secs = totalSec % 60;
+                    fsTimer.textContent = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+                }, 50);
+
+                closeBtn.addEventListener('click', () => {
+                    clearInterval(fsInterval);
+                    document.body.removeChild(fsDiv);
+                });
+            });
+
+            // ==================== 每日微挑战 ====================
+            const activityListDiv = document.getElementById('activityList');
+            const addCustomBtn = document.getElementById('addCustomActivity');
+            const customName = document.getElementById('customActivityName');
+            const saveActivityBtn = document.getElementById('saveActivityBtn');
+            const viewActivityHistoryBtn = document.getElementById('viewActivityHistoryBtn');
+            const activityModal = document.getElementById('activityHistoryModal');
+            const closeActivityModal = document.getElementById('closeActivityModal');
+            const fullActivityHistory = document.getElementById('fullActivityHistory');
+            const clearTodayActivitiesBtn = document.getElementById('clearTodayActivities');
+
+            document.querySelectorAll('.preset-tag').forEach(tag => {
+                tag.addEventListener('click', () => {
+                    const activity = tag.dataset.activity;
+                    const unit = tag.dataset.unit;
+                    addActivityItem(activity, unit);
+                });
+            });
+
+            function addActivityItem(activity, unit, value = 0) {
+                const div = document.createElement('div');
+                div.className = 'activity-item';
+                div.innerHTML = `
+                    <span class="activity-name">${activity}</span>
+                    <input type="number" class="activity-value" value="${value}" min="0" step="1">
+                    <select class="activity-unit">
+                        <option value="分钟" ${unit==='分钟'?'selected':''}>分钟</option>
+                        <option value="小时" ${unit==='小时'?'selected':''}>小时</option>
+                        <option value="次" ${unit==='次'?'selected':''}>次</option>
+                        <option value="句" ${unit==='句'?'selected':''}>句</option>
+                        <option value="页" ${unit==='页'?'selected':''}>页</option>
+                        <option value="字" ${unit==='字'?'selected':''}>字</option>
+                        <option value="杯" ${unit==='杯'?'selected':''}>杯</option>
+                        <option value="其他" ${unit==='其他'?'selected':''}>其他</option>
+                    </select>
+                    <button class="remove-activity">✖</button>
+                `;
+                activityListDiv.appendChild(div);
+                div.querySelector('.remove-activity').addEventListener('click', () => div.remove());
+            }
+
+            addCustomBtn.addEventListener('click', () => {
+                const name = customName.value.trim();
+                if (name) {
+                    addActivityItem(name, '次');
+                    customName.value = '';
+                }
+            });
+
+            function saveTodayActivities() {
+                const items = document.querySelectorAll('.activity-item');
+                const activities = [];
+                items.forEach(item => {
+                    const name = item.querySelector('.activity-name').textContent;
+                    const value = item.querySelector('.activity-value').value;
+                    const unit = item.querySelector('.activity-unit').value;
+                    activities.push({ name, value: parseInt(value) || 0, unit });
+                });
+                const today = new Date().toDateString();
+                let history = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITY_HISTORY)) || {};
+                history[today] = activities;
+                localStorage.setItem(STORAGE_KEYS.ACTIVITY_HISTORY, JSON.stringify(history));
+                updateAchievementStats();
+                alert('今日活动已保存');
+            }
+
+            saveActivityBtn.addEventListener('click', saveTodayActivities);
+
+            // 加载今日活动：有保存记录则加载，否则加载默认示例（便于新用户）
+            function loadTodayActivities() {
+                const today = new Date().toDateString();
+                let history = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITY_HISTORY)) || {};
+                if (history[today]) {
+                    history[today].forEach(act => {
+                        addActivityItem(act.name, act.unit, act.value);
+                    });
+                } else {
+                    // 首次进入：加载默认示例
+                    addActivityItem('冥想', '分钟');
+                    addActivityItem('出门', '次');
+                    addActivityItem('晒太阳', '分钟');
+                }
+            }
+
+            function clearTodayActivities() {
+                // 清空界面
+                activityListDiv.innerHTML = '';
+                
+                // 从 localStorage 中删除今天的记录
+                const today = new Date().toDateString();
+                let history = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITY_HISTORY)) || {};
+                delete history[today];
+                localStorage.setItem(STORAGE_KEYS.ACTIVITY_HISTORY, JSON.stringify(history));
+                
+                // 成就统计归零
+                updateAchievementStats();
+            }
+
+            loadTodayActivities();
+            clearTodayActivitiesBtn.addEventListener('click', clearTodayActivities);
+
+            viewActivityHistoryBtn.addEventListener('click', () => {
+                const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITY_HISTORY)) || {};
+                fullActivityHistory.innerHTML = '';
+                const sortedDates = Object.keys(history).sort().reverse();
+                if (sortedDates.length === 0) {
+                    fullActivityHistory.innerHTML = '<p>暂无历史记录</p>';
+                } else {
+                    sortedDates.forEach(date => {
+                        const div = document.createElement('div');
+                        div.style.marginBottom = '15px';
+                        div.innerHTML = `<strong>${date}</strong>`;
+                        const list = document.createElement('ul');
+                        history[date].forEach(act => {
+                            const li = document.createElement('li');
+                            li.textContent = `${act.name}: ${act.value} ${act.unit}`;
+                            list.appendChild(li);
+                        });
+                        div.appendChild(list);
+                        fullActivityHistory.appendChild(div);
+                    });
+                }
+                activityModal.style.display = 'flex';
+            });
+
+            closeActivityModal.addEventListener('click', () => {
+                activityModal.style.display = 'none';
+            });
+
+            window.addEventListener('click', (e) => {
+                if (e.target === activityModal) activityModal.style.display = 'none';
+            });
+
+            // ==================== 一周成就 ====================
+            function updateAchievementStats() {
+                const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITY_HISTORY)) || {};
+                const dates = Object.keys(history).sort();
+                if (dates.length === 0) {
+                    document.getElementById('streakDays').textContent = '0';
+                    document.getElementById('totalWeek').textContent = '0';
+                    document.getElementById('totalAll').textContent = '0';
+                    return;
+                }
+
+                let streak = 0;
+                const today = new Date().toDateString();
+                let current = new Date(today);
+                while (true) {
+                    const dateStr = current.toDateString();
+                    if (history[dateStr]) {
+                        streak++;
+                        current.setDate(current.getDate() - 1);
+                    } else {
+                        break;
+                    }
+                }
+
+                const now = new Date();
+                const startOfWeek = new Date(now);
+                startOfWeek.setDate(now.getDate() - now.getDay());
+                let weekTotal = 0;
+                for (let i = 0; i < 7; i++) {
+                    const d = new Date(startOfWeek);
+                    d.setDate(startOfWeek.getDate() + i);
+                    const dateStr = d.toDateString();
+                    if (history[dateStr]) {
+                        weekTotal += history[dateStr].length;
+                    }
+                }
+
+                let totalAll = 0;
+                Object.values(history).forEach(acts => totalAll += acts.length);
+
+                document.getElementById('streakDays').textContent = streak;
+                document.getElementById('totalWeek').textContent = weekTotal;
+                document.getElementById('totalAll').textContent = totalAll;
+            }
+            updateAchievementStats();
+
+            // ==================== 解压小游戏 ====================
+            const canvas = document.getElementById('gameCanvas');
+            const ctxGame = canvas.getContext('2d');
+            const gameScoreSpan = document.getElementById('gameScore');
+            let bubbles = [];
+            let score = 0;
+            let gameInterval;
+
+            function resizeCanvas() {
+                const container = canvas.parentElement;
+                canvas.width = container.clientWidth;
+                canvas.height = 200;
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            function createBubble() {
+                return {
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    r: 15 + Math.random() * 15,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: (Math.random() - 0.5) * 2
+                };
+            }
+
+            function initGame() {
+                bubbles = [];
+                for (let i = 0; i < 10; i++) {
+                    bubbles.push(createBubble());
+                }
+                score = 0;
+                gameScoreSpan.textContent = score;
+            }
+
+            function updateGame() {
+                ctxGame.clearRect(0, 0, canvas.width, canvas.height);
+                bubbles.forEach(b => {
+                    b.x += b.vx;
+                    b.y += b.vy;
+                    if (b.x < 0 || b.x > canvas.width) b.vx *= -1;
+                    if (b.y < 0 || b.y > canvas.height) b.vy *= -1;
+                    ctxGame.beginPath();
+                    ctxGame.arc(b.x, b.y, b.r, 0, Math.PI*2);
+                    ctxGame.fillStyle = 'rgba(100,150,200,0.6)';
+                    ctxGame.fill();
+                    ctxGame.strokeStyle = 'white';
+                    ctxGame.stroke();
+                });
+            }
+
+            canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const mouseX = (e.clientX - rect.left) * scaleX;
+                const mouseY = (e.clientY - rect.top) * scaleY;
+
+                for (let i = bubbles.length - 1; i >= 0; i--) {
+                    const b = bubbles[i];
+                    const dist = Math.hypot(mouseX - b.x, mouseY - b.y);
+                    if (dist < b.r) {
+                        bubbles.splice(i, 1);
+                        score++;
+                        gameScoreSpan.textContent = score;
+                        bubbles.push(createBubble());
+                        break;
+                    }
+                }
+            });
+
+            document.getElementById('resetGame').addEventListener('click', () => {
+                initGame();
+            });
+
+            initGame();
+            gameInterval = setInterval(updateGame, 30);
+
+            // ==================== 心情日记导出 ====================
+            document.getElementById('exportDiary').addEventListener('click', () => {
+                const moodText = moodRecords.map(r => `${r.date} ${r.emoji} ${r.note}`).join('\n');
+                const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITY_HISTORY)) || {};
+                let activityText = '';
+                for (let [date, acts] of Object.entries(history)) {
+                    activityText += `\n${date}:\n`;
+                    acts.forEach(a => activityText += `  ${a.name}: ${a.value} ${a.unit}\n`);
+                }
+                // 添加心理疏导记录
+                const soothing = JSON.parse(localStorage.getItem(STORAGE_KEYS.SOOTHING)) || {};
+                let soothingText = '\n心理疏导记录:\n';
+                for (let [key, value] of Object.entries(soothing)) {
+                    if (value.done) {
+                        soothingText += `  ${key}: 已完成`;
+                        if (value.note) soothingText += ` (${value.note})`;
+                        soothingText += '\n';
+                    }
+                }
+                const content = `情绪记录:\n${moodText}\n\n活动记录:${activityText}\n${soothingText}`;
+                const blob = new Blob([content], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `心情日记_${new Date().toISOString().slice(0,10)}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            document.getElementById('exportImage').addEventListener('click', () => {
+                html2canvas(document.querySelector('.mood-container')).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = '心情日记截图.png';
+                    link.href = canvas.toDataURL();
+                    link.click();
+                });
+            });
+
+            // ==================== 治愈语录 ====================
+            const quotes = [
+                "没做什么也没关系，休息也是必要的。",
+                "今天不想说话？那就安静地待一会儿。",
+                "你不需要一直 productive，存在本身就有价值。",
+                "如果今天很难，那就更难能可贵你还在坚持。",
+                "允许自己偶尔‘浪费’时间，那是在给心灵松土。",
+                "只要呼吸，你就已经在努力了。",
+                "哪怕只有五分钟，做点让自己舒服的事吧。",
+                "不想动？那就躺平，床会接住你。",
+                "今天有没有笑过一次？没有的话，现在笑一个 :)",
+                "阳光照在手上，也是一种交流。",
+                "你不需要向任何人证明你今天‘做了’什么。",
+                "发呆是大脑的清理模式，值得鼓励。"
+            ];
+            const quoteBox = document.getElementById('quoteBox');
+            function showRandomQuote() {
+                const idx = Math.floor(Math.random() * quotes.length);
+                quoteBox.textContent = `“${quotes[idx]}”`;
+            }
+            showRandomQuote();
+            setInterval(showRandomQuote, 30000);
+
+            // ==================== 卡片排序功能 ====================
+            const container = document.getElementById('moodContainer');
+            const cardIds = ['mood', 'breath', 'noise', 'daily', 'language', 'soothing'];
+
+            function loadCardOrder() {
+                const savedOrder = localStorage.getItem(STORAGE_KEYS.CARD_ORDER);
+                if (savedOrder) {
+                    try {
+                        const order = JSON.parse(savedOrder);
+                        const cards = Array.from(container.children);
+                        order.forEach(id => {
+                            const card = cards.find(c => c.dataset.cardId === id);
+                            if (card) container.appendChild(card);
+                        });
+                        cards.forEach(card => {
+                            if (!order.includes(card.dataset.cardId)) {
+                                container.appendChild(card);
+                            }
+                        });
+                    } catch (e) {}
+                }
+            }
+
+            function saveCardOrder() {
+                const cards = Array.from(container.children);
+                const order = cards.map(card => card.dataset.cardId);
+                localStorage.setItem(STORAGE_KEYS.CARD_ORDER, JSON.stringify(order));
+            }
+
+            new Sortable(container, {
+                animation: 150,
+                handle: '.card-title',
+                onEnd: function() {
+                    saveCardOrder();
+                }
+            });
+
+            loadCardOrder();
+
+            // ==================== 多语言学习模块（每日随机）====================
+            const langTags = document.querySelectorAll('.lang-tag');
+            const wordTarget = document.getElementById('wordTarget');
+            const wordTranslation = document.getElementById('wordTranslation');
+            const wordExample = document.getElementById('wordExample');
+            const prevWord = document.getElementById('prevWord');
+            const nextWord = document.getElementById('nextWord');
+            const wordProgress = document.getElementById('wordProgress');
+
+            const phraseDB = {
+                en: [
+                    { target: "Hello", translation: "你好", example: "Hello, how are you?" },
+                    { target: "Thank you", translation: "谢谢", example: "Thank you for your help." },
+                    { target: "I'm fine", translation: "我很好", example: "I'm fine, thank you." },
+                    { target: "Good morning", translation: "早上好", example: "Good morning, have a nice day!" },
+                    { target: "Good night", translation: "晚安", example: "Good night, sleep well." },
+                    { target: "See you later", translation: "回头见", example: "See you later, take care!" },
+                    { target: "How are you?", translation: "你好吗", example: "How are you doing today?" },
+                    { target: "I love you", translation: "我爱你", example: "I love you so much." },
+                    { target: "Sorry", translation: "对不起", example: "I'm sorry for being late." },
+                    { target: "Yes/No", translation: "是/否", example: "Yes, I agree." }
+                ],
+                fr: [
+                    { target: "Bonjour", translation: "你好", example: "Bonjour, comment allez-vous?" },
+                    { target: "Merci", translation: "谢谢", example: "Merci beaucoup!" },
+                    { target: "Je vais bien", translation: "我很好", example: "Je vais bien, et toi?" },
+                    { target: "Bonne nuit", translation: "晚安", example: "Bonne nuit, fais de beaux rêves." },
+                    { target: "À bientôt", translation: "回头见", example: "À bientôt, prends soin de toi." },
+                    { target: "Comment ça va?", translation: "你好吗", example: "Comment ça va aujourd'hui?" },
+                    { target: "Je t'aime", translation: "我爱你", example: "Je t'aime de tout mon cœur." },
+                    { target: "Désolé(e)", translation: "对不起", example: "Je suis désolé pour le retard." },
+                    { target: "Oui/Non", translation: "是/否", example: "Oui, je suis d'accord." },
+                    { target: "S'il vous plaît", translation: "请", example: "Un café, s'il vous plaît." }
+                ],
+                ja: [
+                    { target: "こんにちは", translation: "你好", example: "こんにちは、元気ですか？" },
+                    { target: "ありがとう", translation: "谢谢", example: "ありがとうございます。" },
+                    { target: "元気です", translation: "我很好", example: "元気です、あなたは？" },
+                    { target: "おやすみなさい", translation: "晚安", example: "おやすみなさい、良い夢を。" },
+                    { target: "またね", translation: "回头见", example: "またね、気をつけて。" },
+                    { target: "おげんきですか", translation: "你好吗", example: "お元気ですか？" },
+                    { target: "愛してる", translation: "我爱你", example: "愛してるよ。" },
+                    { target: "ごめんなさい", translation: "对不起", example: "遅れてごめんなさい。" },
+                    { target: "はい/いいえ", translation: "是/否", example: "はい、そうです。" },
+                    { target: "お願いします", translation: "请", example: "コーヒーをお願いします。" }
+                ],
+                ko: [
+                    { target: "안녕하세요", translation: "你好", example: "안녕하세요, 잘 지내세요?" },
+                    { target: "감사합니다", translation: "谢谢", example: "도와주셔서 감사합니다." },
+                    { target: "잘 지내요", translation: "我很好", example: "잘 지내요, 당신은요?" },
+                    { target: "안녕히 주무세요", translation: "晚安", example: "안녕히 주무세요, 좋은 꿈 꿔요." },
+                    { target: "다음에 봐요", translation: "回头见", example: "다음에 봐요, 몸 조심하세요." },
+                    { target: "어떻게 지내세요", translation: "你好吗", example: "오늘 어떻게 지내세요?" },
+                    { target: "사랑해요", translation: "我爱你", example: "진심으로 사랑해요." },
+                    { target: "미안합니다", translation: "对不起", example: "늦어서 미안합니다." },
+                    { target: "네/아니요", translation: "是/否", example: "네, 동의합니다." },
+                    { target: "주세요", translation: "请", example: "커피 주세요." }
+                ],
+                ru: [
+                    { target: "Здравствуйте", translation: "你好", example: "Здравствуйте, как дела?" },
+                    { target: "Спасибо", translation: "谢谢", example: "Спасибо за помощь." },
+                    { target: "У меня всё хорошо", translation: "我很好", example: "У меня всё хорошо, а у вас?" },
+                    { target: "Спокойной ночи", translation: "晚安", example: "Спокойной ночи, сладких снов." },
+                    { target: "До свидания", translation: "再见", example: "До свидания, берегите себя." },
+                    { target: "Как дела", translation: "你好吗", example: "Как у вас дела сегодня?" },
+                    { target: "Я люблю тебя", translation: "我爱你", example: "Я очень люблю тебя." },
+                    { target: "Извините", translation: "对不起", example: "Извините за опоздание." },
+                    { target: "Да/Нет", translation: "是/否", example: "Да, я согласен." },
+                    { target: "Пожалуйста", translation: "请", example: "Кофе, пожалуйста." }
+                ],
+                de: [
+                    { target: "Hallo", translation: "你好", example: "Hallo, wie geht es dir?" },
+                    { target: "Danke", translation: "谢谢", example: "Danke für deine Hilfe." },
+                    { target: "Mir geht es gut", translation: "我很好", example: "Mir geht es gut, und dir?" },
+                    { target: "Gute Nacht", translation: "晚安", example: "Gute Nacht, träum süß." },
+                    { target: "Bis später", translation: "回头见", example: "Bis später, pass auf dich auf." },
+                    { target: "Wie geht's", translation: "你好吗", example: "Wie geht es dir heute?" },
+                    { target: "Ich liebe dich", translation: "我爱你", example: "Ich liebe dich von ganzem Herzen." },
+                    { target: "Entschuldigung", translation: "对不起", example: "Entschuldigung für die Verspätung." },
+                    { target: "Ja/Nein", translation: "是/否", example: "Ja, ich stimme zu." },
+                    { target: "Bitte", translation: "请", example: "Einen Kaffee, bitte." }
+                ]
+            };
+
+            let currentLang = 'en';
+            let currentIndex = 0;
+
+            // 每日随机初始化：根据日期生成一个伪随机数，选择当天的起始索引
+            function getDailySeed() {
+                const today = new Date().toDateString();
+                let hash = 0;
+                for (let i = 0; i < today.length; i++) {
+                    hash = ((hash << 5) - hash) + today.charCodeAt(i);
+                    hash |= 0;
+                }
+                return Math.abs(hash);
+            }
+
+            function initDailyLanguage() {
+                const seed = getDailySeed();
+                const phrases = phraseDB[currentLang];
+                currentIndex = seed % phrases.length;
+                updateWordDisplay();
+            }
+
+            function updateWordDisplay() {
+                const phrases = phraseDB[currentLang];
+                const phrase = phrases[currentIndex];
+                wordTarget.textContent = phrase.target;
+                wordTranslation.textContent = phrase.translation;
+                wordExample.textContent = phrase.example;
+                wordProgress.textContent = `今日短语 ${currentIndex + 1} / ${phrases.length}`;
+            }
+
+            langTags.forEach(tag => {
+                tag.addEventListener('click', () => {
+                    langTags.forEach(t => t.classList.remove('active'));
+                    tag.classList.add('active');
+                    currentLang = tag.dataset.lang;
+                    const seed = getDailySeed();
+                    const phrases = phraseDB[currentLang];
+                    currentIndex = seed % phrases.length;
+                    updateWordDisplay();
+                });
+            });
+
+            prevWord.addEventListener('click', () => {
+                const phrases = phraseDB[currentLang];
+                currentIndex = (currentIndex - 1 + phrases.length) % phrases.length;
+                updateWordDisplay();
+            });
+
+            nextWord.addEventListener('click', () => {
+                const phrases = phraseDB[currentLang];
+                currentIndex = (currentIndex + 1) % phrases.length;
+                updateWordDisplay();
+            });
+
+            initDailyLanguage();
+
+            // ==================== 心理疏导（可交互）====================
+            const soothingKey = STORAGE_KEYS.SOOTHING;
+            let soothingRecords = JSON.parse(localStorage.getItem(soothingKey)) || {};
+
+            function updateSoothingUI() {
+                const hugCheck = document.getElementById('hugCheck');
+                const groundingCheck = document.getElementById('groundingCheck');
+                const gratitudeCheck = document.getElementById('gratitudeCheck');
+                const natureCheck = document.getElementById('natureCheck');
+                const groundingDesc = document.getElementById('groundingDesc');
+                const gratitudeDesc = document.getElementById('gratitudeDesc');
+
+                if (soothingRecords.hug && soothingRecords.hug.done) {
+                    hugCheck.classList.add('checked');
+                } else {
+                    hugCheck.classList.remove('checked');
+                }
+
+                if (soothingRecords.grounding && soothingRecords.grounding.done) {
+                    groundingCheck.classList.add('checked');
+                    groundingDesc.textContent = soothingRecords.grounding.note || '已完成';
+                } else {
+                    groundingCheck.classList.remove('checked');
+                    groundingDesc.textContent = '点击记录你看到的、摸到的…';
+                }
+
+                if (soothingRecords.gratitude && soothingRecords.gratitude.done) {
+                    gratitudeCheck.classList.add('checked');
+                    gratitudeDesc.textContent = soothingRecords.gratitude.note || '已完成';
+                } else {
+                    gratitudeCheck.classList.remove('checked');
+                    gratitudeDesc.textContent = '点击写下今天的三件好事';
+                }
+
+                if (soothingRecords.nature && soothingRecords.nature.done) {
+                    natureCheck.classList.add('checked');
+                } else {
+                    natureCheck.classList.remove('checked');
+                }
+            }
+
+            document.getElementById('selfHug').addEventListener('click', (e) => {
+                e.stopPropagation();
+                soothingRecords.hug = { done: true, note: '' };
+                localStorage.setItem(soothingKey, JSON.stringify(soothingRecords));
+                updateSoothingUI();
+            });
+
+            document.getElementById('grounding').addEventListener('click', (e) => {
+                e.stopPropagation();
+                const answer = prompt('5-4-3-2-1 grounding 练习\n请分别输入你看到的5样东西、摸到的4样东西、听到的3种声音、闻到的2种气味、尝到的1种味道（用逗号分隔）', '');
+                if (answer !== null) {
+                    soothingRecords.grounding = { done: true, note: answer.substring(0, 100) };
+                    localStorage.setItem(soothingKey, JSON.stringify(soothingRecords));
+                    updateSoothingUI();
+                }
+            });
+
+            document.getElementById('gratitude').addEventListener('click', (e) => {
+                e.stopPropagation();
+                const answer = prompt('三件好事练习\n请写下今天发生的三件让你感到温暖或开心的小事（一行一件）', '');
+                if (answer !== null) {
+                    soothingRecords.gratitude = { done: true, note: answer.substring(0, 200) };
+                    localStorage.setItem(soothingKey, JSON.stringify(soothingRecords));
+                    updateSoothingUI();
+                }
+            });
+
+            document.getElementById('nature').addEventListener('click', (e) => {
+                e.stopPropagation();
+                soothingRecords.nature = { done: true, note: '' };
+                localStorage.setItem(soothingKey, JSON.stringify(soothingRecords));
+                updateSoothingUI();
+            });
+
+            updateSoothingUI();
+        })();
+    </script>
+</body>
+</html>

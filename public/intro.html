@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THE REGOLITH JAR</title>
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
+<style>
+  :root {
+    --bg: #000000;
+    --ink: #ffffff;
+    --muted: rgba(226, 230, 245, 0.68);
+    --dim: rgba(200, 206, 230, 0.44);
+    --gold: #d8b45a;
+    --violet: #9d7bff;
+    --blue: #7fb0ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  /* 星空背景统一由 /sky.css 提供 */
+  
+  main { position: relative; z-index: 1; }
+  .wrap { width: min(1000px, 88vw); margin: 0 auto; }
+
+  nav.top {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 30; height: 54px;
+    display: flex; align-items: center;
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    background: rgba(10, 15, 26, 0.66);
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  nav.top .wrap { display: flex; align-items: center; justify-content: space-between; }
+  nav.top .brand { font-size: 12px; letter-spacing: .34em; color: var(--dim); }
+  nav.top a.back { font-size: 13px; color: var(--muted); text-decoration: none; }
+  nav.top a.back:hover { color: var(--ink); }
+
+  section { padding: 110px 0; }
+  .hero { padding: 170px 0 120px; text-align: center; }
+  .hero h1 {
+    font-size: clamp(38px, 5.8vw, 76px);
+    font-weight: 200;
+    letter-spacing: .16em;
+    line-height: 1.16;
+  }
+  .hero .cap { margin-top: 30px; font-size: 13px; color: var(--dim); letter-spacing: .22em; }
+
+  .stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    gap: 56px;
+    align-items: start;
+    padding: 58px 52px;
+    border-radius: 26px;
+    border: 1px solid rgba(255,255,255,.08);
+    margin-bottom: 46px;
+    background: rgba(9, 13, 26, 0.60);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  }
+  .stage.rev { direction: rtl; }
+  .stage.rev > * { direction: ltr; }
+
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: .3em;
+    color: var(--violet);
+    margin-bottom: 16px;
+  }
+  .stage h2 {
+    font-size: clamp(22px, 2.3vw, 32px);
+    font-weight: 400;
+    line-height: 1.4;
+    letter-spacing: .01em;
+  }
+  .stage p {
+    margin-top: 18px;
+    font-size: 14.5px;
+    line-height: 1.9;
+    color: var(--muted);
+  }
+  .stage ul { margin-top: 22px; list-style: none; }
+  .stage li {
+    font-size: 14px;
+    color: var(--muted);
+    padding: 10px 0 10px 18px;
+    position: relative;
+    border-top: 1px solid rgba(255,255,255,.05);
+    line-height: 1.75;
+  }
+  .stage li:first-child { border-top: none; }
+  .stage li::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 19px;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: rgba(157, 123, 255, .8);
+  }
+  .stage li b { color: var(--ink); font-weight: 500; }
+
+  .art {
+    aspect-ratio: 4 / 3;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,.10);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(circle at 28% 22%, rgba(157,123,255,.14), transparent 56%),
+      radial-gradient(circle at 76% 80%, rgba(127,176,255,.12), transparent 58%),
+      rgba(255,255,255,.02);
+  }
+  .art img.shot {
+    width: 100%; height: 100%;
+    object-fit: cover; object-position: top center;
+    display: block;
+  }
+  .art .badge { z-index: 2; }
+  .art .ghost {
+    font-size: 12px;
+    letter-spacing: .24em;
+    color: rgba(255,255,255,.20);
+    text-align: center;
+    padding: 0 22px;
+    line-height: 2.1;
+  }
+  .art .badge {
+    position: absolute;
+    bottom: 16px; left: 16px;
+    font-size: 10px;
+    letter-spacing: .2em;
+    color: rgba(255,255,255,.34);
+  }
+
+  @media (max-width: 860px) {
+    .stage { grid-template-columns: 1fr; gap: 30px; padding: 36px 24px; }
+    .stage.rev { direction: ltr; }
+    .art { order: -1; }
+    section { padding: 76px 0; }
+  }
+</style>
+  <link rel="stylesheet" href="/sky.css">
+  <script src="/sky.js" defer></script>
+</head>
+<body>
+<div id="sky"><canvas id="skyCanvas"></canvas></div>
+<nav class="top"><div class="wrap"><span class="brand">THE REGOLITH JAR</span><a class="back" href="/">回到首页</a></div></nav>
+
+<main>
+  <div class="wrap">
+    <section class="hero">
+      <h1>THE REGOLITH JAR</h1>
+      <div class="cap">2026</div>
+    </section>
+
+    <section>
+      <div class="stage">
+        <div>
+          <div class="eyebrow">欢迎页</div>
+          <h2>实时星空与标题动效</h2>
+          <p>背景取自 8796 颗恒星的真实星表。按浏览器定位得到的经纬度与当前时刻计算本地恒星时，将赤经赤纬换算成地平坐标后投影到全屏 canvas；换地点、换时间，头顶的星空随之改变。</p>
+          <ul>
+            <li><b>定位回退</b>：拒绝授权或超时沿用默认坐标；页面隐藏时挂起绘制</li>
+            <li><b>低开销</b>：按星等筛选可见星，天球按分钟重算，漂移交给 CSS 合成层</li>
+            <li><b>标题动效</b>：主标题逐字淡入，字距从 .34em 收拢到 .16em，单次播放不循环</li>
+            <li><b>金印</b>：logo 为静态位图，只在悬停时放大 1.03 倍</li>
+          </ul>
+        </div>
+        <div class="art"><img class="shot" src="/images/portfolio/trj-welcome.jpg" alt="欢迎页 页面截图"><span class="badge">欢迎页</span></div>
+      </div>
+
+      <div class="stage rev">
+        <div>
+          <div class="eyebrow">自习室</div>
+          <h2>音乐、计时、待办</h2>
+          <p>左侧固定 400px 工具列，纵向排三张卡片；右侧是房间与聊天区，可整体隐藏进入单机模式。计时、待办、曲目与房间状态分别写入 `localStorage`，断线后本地部分仍可用。</p>
+          <ul>
+            <li><b>自习音乐</b>：内置曲库 + <b>支持导入自己播放器的歌单</b>（外链解析，不转存音频文件）</li>
+            <li><b>同房间同步收听</b>：房主切换曲目时，房间内其他成员同步跳转，进度对齐误差控制在 1 秒内</li>
+            <li><b>番茄钟 / 正计时</b>：25 分钟专注与 5 分钟休息可改，正计时用于不预设时长的场景，到点触发浏览器通知与提示音</li>
+            <li><b>待办清单</b>：回车新增、勾选完成，存本地；支持拖动排序</li>
+            <li><b>自习室列表</b>：`socket.io` 长连接，显示在线人数与各自累计时长，离开自动下线</li>
+            <li><b>IP 拉黑</b>：房主可将指定 IP 移出房间，被拉黑后重连仍会被拒</li>
+            <li><b>全屏单机模式</b>：断开 socket，仅保留本地计时与待办，适合网络不稳时使用</li>
+          </ul>
+        </div>
+        <div class="art"><img class="shot" src="/images/portfolio/trj-study.jpg" alt="自习室 页面截图"><span class="badge">自习室</span></div>
+      </div>
+
+      <div class="stage">
+        <div>
+          <div class="eyebrow">情绪页</div>
+          <h2>记录与放松</h2>
+          <p>六张卡片共用一套可拖拽排序的网格：Pointer 按下后接管位移，占位块以 transform 让位，松手把新顺序写回 `localStorage`，刷新还原。记录类数据按日期分键，不上传服务器。</p>
+          <ul>
+            <li><b>卡片拖拽排序</b>：Sortable 接管 pointer 事件，FLIP 计算落位；顺序、情绪、每日记录、待办分键存储，清空只作用于当前键</li>
+            <li><b>呼吸练习</b>：4-7-8 相位由 `requestAnimationFrame` 驱动圆形缩放；暂停保留相位与时间戳，恢复不跳帧</li>
+            <li><b>环境声音</b>：多轨 audio 各自持有 gain 与 loop，页面隐藏时挂起；音源走 CC0 外链，不转存文件</li>
+            <li><b>解压游戏</b>：canvas 点击消除，粒子与判定在单帧内完成，不落盘、不计分</li>
+          </ul>
+        </div>
+        <div class="art"><img class="shot" src="/images/portfolio/trj-mood.jpg" alt="情绪页 页面截图"><span class="badge">情绪页</span></div>
+      </div>
+
+      <div class="stage rev">
+        <div>
+          <div class="eyebrow">实时星图</div>
+          <h2>按定位算出的头顶星空</h2>
+          <p>星表、观测点和时间三者决定画面。浏览器给出经纬度后（拒绝授权则回退默认坐标），用当前时刻的格林尼治恒星时把每颗星的赤经赤纬换算成地平坐标，只绘制地平线以上的部分。换城市、换时间，星座位置与可见星数都会变。</p>
+          <ul>
+            <li><b>定位与时间</b>：`navigator.geolocation` → 本地恒星时 → 高度角 / 方位角；默认坐标上海</li>
+            <li><b>星表</b>：8796 颗恒星，按星等与色指数决定点的大小、亮度与色温；附带星座连线与中文星名</li>
+            <li><b>渲染</b>：Three.js 点云，天文位置按 4Hz 节流重算，`IntersectionObserver` 控制进入视口才绘制</li>
+          </ul>
+        </div>
+        <div class="art"><img class="shot" src="/images/portfolio/trj-starmap.jpg" alt="3D 星空 页面截图"><span class="badge">3D 星空</span></div>
+      </div>
+
+      <div class="stage">
+        <div>
+          <div class="eyebrow">作品卡片</div>
+          <h2>Cover Flow 卡片带</h2>
+          <p>页面左侧的一条横向卡片带，采用 Cover Flow 布局：中间卡片正面朝向镜头，两侧按距离递减缩放、增加旋转角与不透明度衰减。</p>
+          <ul>
+            <li><b>拖拽滑动</b>：鼠标或触屏拖动，松手按惯性回弹到最近一张</li>
+            <li><b>键盘操作</b>：左右方向键切换，`Enter` 打开当前卡片</li>
+            <li><b>跳转</b>：带 `data-url` 的卡片可点击，其余停在原地</li>
+            <li><b>移动端</b>：卡片宽度与间距按视口宽度计算，保留 3D 纵深</li>
+            <li><b>当前项目</b>：THE REGOLITH JAR、Pico RamOS、巷、猫径 CatWay、OC 小工具、月壤箱</li>
+          </ul>
+        </div>
+        <div class="art"><img class="shot" src="/images/portfolio/trj-works.jpg" alt="作品 页面截图"><span class="badge">作品</span></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+
+</body>
+</html>

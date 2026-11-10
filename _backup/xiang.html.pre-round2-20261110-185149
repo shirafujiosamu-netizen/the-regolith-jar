@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>巷 · THE REGOLITH JAR</title>
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
+<link rel="stylesheet" href="/works/detail.css">
+</head>
+<body>
+<nav class="top"><div class="wrap"><span class="brand">THE REGOLITH JAR</span><a class="back" href="/">回到首页</a></div></nav>
+<main><div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">作品 / 02</div>
+    <h1>巷</h1>
+    <div class="cap">亚文化旅行相机 / Flutter</div>
+  </section>
+
+  <section class="block">
+    <div class="eyebrow">关于</div>
+    <h2>给亚文化旅行用的相机。拍的不是「好看的照片」，是这一趟去了哪、看见了谁。</h2>
+    <p>对照过相机、美颜、旅行手账、修图四类产品，都不对：它们要么只管成像，要么只管排版。巷把拍摄和手账放在同一条流里，拍完直接落到当天的行程上。</p>
+    <p>目标平台 Android，真机调试。风格包不做通用滤镜，按场景和社群做，保留原片的粗糙感。</p>
+    <ul class="facts">
+      <li><b>定位</b>：亚文化旅行照片手记，不是通用拍照工具</li>
+      <li><b>功能</b>：拍照、录像、短视频、风格包、手账流</li>
+      <li><b>组织方式</b>：按行程与时间归档，一条行程串起地点、人物、票根和当时的记录</li>
+      <li><b>技术</b>：Flutter，Android 真机调试</li>
+      <li><b>状态</b>：设计与核心拍摄链路迭代中</li>
+    </ul>
+
+  </section>
+
+  <div class="pager">
+    <a href="/works/pico.html">← Pico RamOS</a>
+    <a href="/works/catway.html">猫径 CatWay →</a>
+  </div>
+
+</div></main>
+</body>
+</html>

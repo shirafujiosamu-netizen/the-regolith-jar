@@ -1,0 +1,22 @@
+/* 全站共用：欢迎页星空背景。任何新页面默认引这一份。 */
+#sky {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: #050510;
+  animation: skydrift 240s linear infinite;
+}
+#sky canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+@keyframes skydrift {
+  from { transform: translate3d(0, 0, 0) scale(1.08); }
+  to   { transform: translate3d(-2%, 1.2%, 0) scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #sky { animation: none; }
+}
